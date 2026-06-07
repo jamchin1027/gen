@@ -114,6 +114,31 @@
       font-weight: 900;
       white-space: nowrap;
     }
+    .title-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+    }
+    .download-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 28px;
+      padding: 0 10px;
+      border: 1px solid #b9cdf4;
+      border-radius: 7px;
+      background: #eaf2ff;
+      color: #164fb6;
+      font-size: 12px;
+      font-weight: 900;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .download-btn:hover {
+      background: #dceaff;
+      border-color: #8fb1ee;
+    }
     .deep-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -671,7 +696,10 @@ end</code></pre>
     </section>
 
     <section class="panel">
-      <div class="panel-title">修改後完整 RTL <span class="file-name">chpi_long_decoder_rgb24_area_lean.v</span></div>
+      <div class="panel-title">
+        <span>修改後完整 RTL <span class="file-name">chpi_long_decoder_rgb24_area_lean.v</span></span>
+        <span class="title-actions"><a class="download-btn" href="chpi_long_decoder_rgb24_area_lean.v" download="Verilog_CHPI420b413b_VerA.v">Download Verilog_CHPI420b413b_VerA</a></span>
+      </div>
       <pre class="code-block"><code>`timescale 1ns/1ps
 
 module chpi_decode_20b_stream_top (
@@ -872,7 +900,10 @@ C:\Users\liuzhengqin\Documents\chpi_long_decoder_rgb24_line_tb.v:218: $finish ca
     </section>
 
     <section class="panel">
-      <div class="panel-title">後續 RTL 規則檔 <span class="file-name">rtl_rule.txt / revise history included</span></div>
+      <div class="panel-title">
+        <span>後續 RTL 規則檔 <span class="file-name">rtl_rule.txt / revise history included</span></span>
+        <span class="title-actions"><a class="download-btn" href="rtl_rule.txt" download="Rule_Ver.A.txt">Download Rule_Ver.A</a></span>
+      </div>
       <pre class="rule-block"><code>RTL Rule File for CHPI / DDIC Digital Helper Work
 =================================================
 
