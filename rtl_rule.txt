@@ -120,14 +120,19 @@ R009 - Keep buffer width justified by throughput and residue.
   Mistake seen:
     Buffer size was not explained clearly enough.
   Required behavior:
-    State why each buffer width exists.
-  CHPI area-lean decoder:
-    raw_shift     : 26 bits, because one clock appends 20b and parser drains
-                    up to three 7b groups; temporary raw count is at most 26.
-    rgb_shift     : 30 bits, because packer can hold up to 23 old bits then add
-                    one 7b group before emitting RGB24.
-    raw_bit_count : 5 bits is enough for 0..26.
-    rgb_bit_count : 5 bits is enough for 0..30.
+    State why each registered buffer and each temporary combinational bus
+    exists.
+  CHPI Ver.C area-lean decoder:
+    raw_residue       : 6 registered bits, because after parsing up to three
+                        7b groups the CHPI raw residue is only 0..6 bits.
+    raw_bit_count     : 3 registered bits is enough for 0..6.
+    append_raw_shift  : 26 combinational bits, because one clock may append
+                        20b to 0..6 old residue bits.
+    rgb_residue       : 23 registered bits, because RGB24 packer residue is
+                        always less than 24 bits after optional output emit.
+    rgb_bit_count     : 5 registered bits is enough for 0..23.
+    pack_shift        : 30 combinational bits, because 23 old bits plus one
+                        7b payload group can exist before emitting RGB24.
 
 R010 - Header/label must be explicit state, not hidden temporary behavior.
   Mistake seen:
@@ -174,36 +179,73 @@ R013 - Simulation must be run before updating user-facing HTML/site.
       - PASS/FAIL result
       - tested data scope
 
+R014 - Minimize registered width before polishing RTL style.
+  Mistake seen:
+    A readable Ver.B implementation still kept the 26b raw aligner and 30b RGB
+    packer as registered state. Functionally it passed, but it was not the
+    smallest area style.
+  Required behavior:
+    For area-first stream RTL, only register the residue needed across clocks.
+    Wide aligner/packer buses may exist as combinational temporary signals, but
+    should not become flops unless timing closure requires pipelining.
+  Verification requirement:
+    Before delivering "area-lean" RTL, list the real flop state and check that:
+      - CHPI raw residue is registered as 0..6 bits, not a full 26b aligner.
+      - RGB residue is registered as 0..23 bits, not a full 30b packer.
+      - Packet position uses the smallest natural counter; for CHPI 420b this
+        is a 6b group counter for header + 59 payload groups.
+
+R015 - Avoid generic variable shifters in small datapath glue.
+  Mistake seen:
+    Ver.B used variable shifts such as:
+      chpi_in << raw_bit_count
+      payload_bits << pack_count
+    Synthesis may optimize them, but they can be read as barrel shifters and
+    make area less predictable.
+  Required behavior:
+    If the shift amount has a small finite set, write explicit case placement
+    or a case-based helper function.
+  Verification requirement:
+    Search final area-lean RTL for "<<" and ">>".
+    Constant shifts are acceptable. Variable shifts in the main datapath need
+    an explicit area reason.
+
 
 Current Verified RTL
 --------------------
 
 File:
-  chpi_long_decoder_rgb24_area_lean.v
+  chpi_long_decoder_rgb24_area_lean_verc.v
 
 Purpose:
   Synthesis-intended, area-lean CHPI 420b to 413b decoder demo for continuous
   CHPI[19:0] input and RGB24 output.
 
-Review-style choices in Ver.B:
+Review-style choices in Ver.C:
   - Removed the parser for-loop and wrote explicit stage0/stage1/stage2 blocks.
   - Removed the *_q / *_n / *_w deliverable naming style.
   - Split registers into multiple clock/reset always blocks by function:
-      raw aligner, packet counter, label state, RGB packer, RGB output.
+      raw residue, packet group counter, label state, RGB residue, RGB output.
   - Kept combinational helper blocks small and fully assigned.
   - Removed useful20 debug FIFO/counter datapath by tying debug output off.
   - Preserved continuous 20b throughput by parsing up to three 7b groups per
     clock.
-  - Kept 26b raw buffer and 30b RGB buffer instead of a large line/backlog FIFO.
+  - Reduced real registered state:
+      raw aligner DFF   : 26b -> 6b raw_residue
+      raw count DFF     : 5b  -> 3b raw_bit_count
+      packet counter DFF: 9b  -> 6b packet_group_count
+      RGB packer DFF    : 30b -> 23b rgb_residue
+  - Replaced generic variable input/RGB insertion shifts with case-based muxes.
+  - Kept 26b raw aligner and 30b RGB packer only as combinational temporaries.
 
 Simulation:
   Tool:
     Icarus Verilog
   Command:
-    iverilog -g2012 -Wall -o chpi_area_lean_line_tb.out
+    iverilog -g2012 -Wall -o chpi_area_lean_verc_line_tb.out
       chpi_long_decoder_rgb24_line_tb.v
-      chpi_long_decoder_rgb24_area_lean.v
-    vvp chpi_area_lean_line_tb.out
+      chpi_long_decoder_rgb24_area_lean_verc.v
+    vvp chpi_area_lean_verc_line_tb.out
   Result:
     PASS: complete line matched: 5 CTRL_L bytes + 960 RGB bytes
     Output RGB24 words=326, checked bytes=978
@@ -226,6 +268,8 @@ Pre-Delivery Checklist
 [ ] Are hardware stages named and commented?
 [ ] Are buffer widths justified?
 [ ] Did I avoid debug logic unless explicitly needed?
+[ ] Did I minimize real registered width before optimizing comments/style?
+[ ] Did I avoid generic variable shifters in small placement logic?
 [ ] Did I verify throughput and backlog behavior?
 [ ] Did I run the relevant testbench?
 [ ] Did I paste the exact PASS log into the review document?
@@ -259,3 +303,18 @@ Revise History
       - replace parser for-loop with explicit stage0/stage1/stage2
       - require complete combinational defaults and explicit else branches
     Re-ran Icarus line simulation and confirmed PASS.
+
+2026-06-08 Rev C
+  Area-first update after reviewing flop count and variable shifters.
+  Root cause:
+    Ver.B was readable and simulation-correct, but still registered more bits
+    than necessary and relied on variable insertion shifts that could be
+    synthesized as larger mux/barrel-shift style logic.
+  Action:
+    Added R014-R015 and updated current RTL guidance:
+      - keep only raw_residue[5:0] instead of registered 26b raw aligner
+      - keep only rgb_residue[22:0] instead of registered 30b RGB packer
+      - use 6b packet_group_count instead of 9b packet_bit_count
+      - replace variable input/RGB insertion shifts with case-based placement
+      - keep 3 explicit parser stages to preserve continuous 20b throughput
+    Re-ran Icarus line simulation on Ver.C and confirmed PASS.
