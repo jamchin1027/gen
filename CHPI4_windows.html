@@ -263,6 +263,11 @@
       text-decoration: none;
     }
 
+    .download-card.downloading {
+      opacity: 0.72;
+      pointer-events: none;
+    }
+
     .download-card strong {
       display: block;
       font-size: 15px;
@@ -4452,27 +4457,27 @@ endmodule
         <h2>Simulation/files download</h2>
         <p class="file-subtitle">Icarus Verilog one-line decode test: 5 byte CTRL_L + 960 byte RGB, exported for local GTKWave review.</p>
         <div class="download-grid">
-          <a class="download-card" href="https://raw.githubusercontent.com/jamchin1027/gen/main/chpi_long_decoder_rgb24.v" download>
+          <a class="download-card" href="chpi_long_decoder_rgb24.v" download="chpi_long_decoder_rgb24.v">
             <strong>decoder verilog</strong>
             <span>CHPI[19:0] streaming decoder RTL</span>
             <code>chpi_long_decoder_rgb24.v</code>
           </a>
-          <a class="download-card" href="https://raw.githubusercontent.com/jamchin1027/gen/main/chpi_long_decoder_rgb24_line_tb.v" download>
+          <a class="download-card" href="chpi_long_decoder_rgb24_line_tb.v" download="chpi_long_decoder_rgb24_line_tb.v">
             <strong>line testbench</strong>
             <span>5B CTRL_L + 960B RGB full-line simulation</span>
             <code>chpi_long_decoder_rgb24_line_tb.v</code>
           </a>
-          <a class="download-card" href="https://raw.githubusercontent.com/jamchin1027/gen/main/chpi_long_decoder_rgb24_line_tb.vcd" download>
+          <a class="download-card" href="chpi_long_decoder_rgb24_line_tb.vcd" download="chpi_long_decoder_rgb24_line_tb.vcd">
             <strong>VCD waveform</strong>
             <span>Open locally with GTKWave</span>
             <code>chpi_long_decoder_rgb24_line_tb.vcd</code>
           </a>
-          <a class="download-card" href="https://raw.githubusercontent.com/jamchin1027/gen/main/chpi_long_decoder_rgb24_line_tb.gtkw" download>
+          <a class="download-card" href="chpi_long_decoder_rgb24_line_tb.gtkw" download="chpi_long_decoder_rgb24_line_tb.gtkw">
             <strong>GTKWave save file</strong>
             <span>Signal list and viewing window</span>
             <code>chpi_long_decoder_rgb24_line_tb.gtkw</code>
           </a>
-          <a class="download-card" href="https://raw.githubusercontent.com/jamchin1027/gen/main/chpi_long_decoder_rgb24_line_tb.log" download>
+          <a class="download-card" href="chpi_long_decoder_rgb24_line_tb.log" download="chpi_long_decoder_rgb24_line_tb.log">
             <strong>Icarus PASS log</strong>
             <span>Simulation output summary</span>
             <code>chpi_long_decoder_rgb24_line_tb.log</code>
@@ -4543,6 +4548,7 @@ Output RGB24 words=326, checked bytes=978</pre>
     const pageTabs = Array.from(document.querySelectorAll(".page-tab"));
     const pageViews = Array.from(document.querySelectorAll(".page-view"));
     const embeddedFrames = Array.from(document.querySelectorAll(".embedded-frame"));
+    const downloadCards = Array.from(document.querySelectorAll(".download-card"));
 
     let code = 0;
     let previousCode = 0;
@@ -4562,6 +4568,38 @@ Output RGB24 words=326, checked bytes=978</pre>
 
     function byteBitsLsbFirst(value) {
       return Array.from({ length: 8 }, (_, index) => (value >> index) & 1).join("");
+    }
+
+    async function downloadFile(event) {
+      event.preventDefault();
+      const card = event.currentTarget;
+      const url = card.href;
+      const fileName = card.querySelector("code")?.textContent.trim() || url.split("/").pop();
+      card.classList.add("downloading");
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(blobUrl);
+      } catch (error) {
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = fileName;
+        link.target = "_blank";
+        link.rel = "noopener";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } finally {
+        card.classList.remove("downloading");
+      }
     }
 
     function makePayload413(value) {
@@ -4862,6 +4900,9 @@ Output RGB24 words=326, checked bytes=978</pre>
     });
     pageTabs.forEach((tab) => {
       tab.addEventListener("click", () => setPage(tab.dataset.page));
+    });
+    downloadCards.forEach((card) => {
+      card.addEventListener("click", downloadFile);
     });
     embeddedFrames.forEach((frame) => {
       frame.addEventListener("load", () => {
