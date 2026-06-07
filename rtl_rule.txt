@@ -279,7 +279,7 @@ Pre-Delivery Checklist
 Revise History
 --------------
 
-2026-06-07 Rev A
+2026-06-07 21:20:11 +08:00 Rev A
   Initial rule file created after CHPI decoder RTL review.
   Root cause:
     Earlier RTL was too close to trace/demo code, mixed blocking and
@@ -289,7 +289,7 @@ Revise History
     Added first review rules, area-lean CHPI decoder guidance, simulation
     requirement, and pre-delivery checklist.
 
-2026-06-07 Rev B
+2026-06-07 23:40:07 +08:00 Rev B
   Company-style readability update after senior review feedback.
   Root cause:
     The Rev A correction still looked too much like a global next-state style.
@@ -304,7 +304,7 @@ Revise History
       - require complete combinational defaults and explicit else branches
     Re-ran Icarus line simulation and confirmed PASS.
 
-2026-06-08 Rev C
+2026-06-08 00:34:12 +08:00 Rev C
   Area-first update after reviewing flop count and variable shifters.
   Root cause:
     Ver.B was readable and simulation-correct, but still registered more bits
