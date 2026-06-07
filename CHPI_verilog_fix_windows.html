@@ -1,0 +1,989 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CHPI Verilog Fix Review - Windows</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f3f6fb;
+      --ink: #161a22;
+      --muted: #5d6675;
+      --panel: #ffffff;
+      --line: #d6deea;
+      --code: #10151f;
+      --bad: #b42318;
+      --bad-soft: #fde8e7;
+      --good: #14783d;
+      --good-soft: #e5f6ea;
+      --area: #6d43c4;
+      --area-soft: #efe9ff;
+      --assign: #9a5b00;
+      --assign-soft: #fff2cc;
+      --circuit: #1556d1;
+      --circuit-soft: #e5efff;
+      --synth: #a5285b;
+      --synth-soft: #fde7f0;
+      --read: #0e766e;
+      --read-soft: #daf7f2;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Segoe UI", Arial, "Microsoft JhengHei", sans-serif;
+    }
+    main {
+      max-width: 1580px;
+      margin: 0 auto;
+      padding: 18px;
+    }
+    header {
+      display: grid;
+      grid-template-columns: minmax(420px, 0.85fr) minmax(620px, 1.15fr);
+      gap: 12px;
+      align-items: end;
+      margin-bottom: 12px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+    .subtitle {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .card, .panel, .flow-step {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+    .card {
+      padding: 10px;
+      min-height: 84px;
+    }
+    .card b {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 13px;
+    }
+    .card p, .flow-step p, .deep p, .fix-note p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12.5px;
+      line-height: 1.5;
+    }
+    .panel {
+      overflow: hidden;
+      margin-top: 12px;
+    }
+    .panel-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcff;
+      font-size: 15px;
+      font-weight: 850;
+    }
+    .status-pass {
+      display: inline-flex;
+      align-items: center;
+      height: 24px;
+      padding: 0 9px;
+      border-radius: 999px;
+      background: var(--good-soft);
+      color: var(--good);
+      font-size: 11px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .deep-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 9px;
+      padding: 10px;
+    }
+    .deep {
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-left: 4px solid var(--bad);
+    }
+    .deep h3 {
+      margin: 0 0 5px;
+      font-size: 13px;
+    }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 8px;
+      padding: 10px;
+    }
+    .flow-step {
+      position: relative;
+      padding: 10px;
+      min-height: 118px;
+      border-left: 4px solid var(--circuit);
+    }
+    .flow-step h3 {
+      margin: 0 0 5px;
+      font-size: 12.5px;
+      line-height: 1.25;
+    }
+    .desktop .flow-step:not(:last-child)::after {
+      content: ">";
+      position: absolute;
+      right: -9px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--circuit);
+      font-weight: 900;
+      z-index: 3;
+    }
+    .mobile .flow-step:not(:last-child)::after {
+      content: "↓";
+      display: block;
+      margin-top: 6px;
+      color: var(--circuit);
+      font-weight: 900;
+      text-align: center;
+    }
+    .fix-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(280px, 0.72fr);
+      gap: 10px;
+      padding: 10px 10px 0;
+    }
+    .fix-head b, .col-title {
+      display: block;
+      padding: 7px 9px;
+      border-radius: 7px;
+      background: #f6f8fc;
+      color: #344054;
+      font-size: 12px;
+      font-weight: 850;
+    }
+    .fix-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(280px, 0.72fr);
+      gap: 10px;
+      padding: 10px;
+      border-top: 1px solid #edf1f7;
+    }
+    .fix-code {
+      min-width: 0;
+    }
+    pre {
+      margin: 0;
+      overflow: auto;
+      background: var(--code);
+      color: #e8edf7;
+      border-radius: 7px;
+      font: 11px/1.5 Consolas, "Courier New", monospace;
+      white-space: pre;
+      tab-size: 2;
+    }
+    .fix-code pre {
+      min-height: 148px;
+      max-height: 240px;
+      padding: 11px;
+      border: 1px solid #202938;
+    }
+    .fix-code.before pre { box-shadow: inset 4px 0 0 var(--bad); }
+    .fix-code.after pre { box-shadow: inset 4px 0 0 var(--good); }
+    .fix-notes {
+      display: grid;
+      gap: 8px;
+      align-content: start;
+    }
+    .fix-note {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px;
+      background: #fff;
+      border-left-width: 5px;
+    }
+    .fix-note.assign { border-left-color: var(--assign); background: linear-gradient(90deg, var(--assign-soft), #fff 32%); }
+    .fix-note.circuit { border-left-color: var(--circuit); background: linear-gradient(90deg, var(--circuit-soft), #fff 32%); }
+    .fix-note.area { border-left-color: var(--area); background: linear-gradient(90deg, var(--area-soft), #fff 32%); }
+    .fix-note.synth { border-left-color: var(--synth); background: linear-gradient(90deg, var(--synth-soft), #fff 32%); }
+    .fix-note.read { border-left-color: var(--read); background: linear-gradient(90deg, var(--read-soft), #fff 32%); }
+    .note-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 900;
+      margin-bottom: 6px;
+    }
+    .note-badge.assign { color: var(--assign); background: var(--assign-soft); }
+    .note-badge.circuit { color: var(--circuit); background: var(--circuit-soft); }
+    .note-badge.area { color: var(--area); background: var(--area-soft); }
+    .note-badge.synth { color: var(--synth); background: var(--synth-soft); }
+    .note-badge.read { color: var(--read); background: var(--read-soft); }
+    code {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.95em;
+      color: #1f2937;
+      background: rgba(255,255,255,0.62);
+      border-radius: 4px;
+      padding: 0 3px;
+    }
+    .area-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 9px;
+      padding: 10px;
+    }
+    .area-box {
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--area);
+      border-radius: 8px;
+      background: #fff;
+      padding: 10px;
+    }
+    .area-box b {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 13px;
+    }
+    .area-box p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .code-block {
+      max-height: 720px;
+      padding: 12px;
+      border-radius: 0;
+      border-top: 1px solid var(--line);
+    }
+    .rule-block {
+      max-height: 560px;
+      padding: 12px;
+      border-radius: 0;
+      border-top: 1px solid var(--line);
+    }
+    .sim-grid {
+      display: grid;
+      grid-template-columns: 0.8fr 1.2fr;
+      gap: 10px;
+      padding: 10px;
+    }
+    .sim-box {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 10px;
+    }
+    .sim-box h3 {
+      margin: 0 0 6px;
+      font-size: 13px;
+    }
+    .sim-box p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    .pass-log {
+      color: #c9f7d4;
+      max-height: 420px;
+      padding: 12px;
+    }
+    .file-name {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+    @media (max-width: 1080px) {
+      main { padding: 10px; }
+      header, .cards, .deep-grid, .flow, .fix-head, .fix-row, .area-grid, .sim-grid {
+        grid-template-columns: 1fr;
+      }
+      .desktop .flow-step:not(:last-child)::after {
+        content: "↓";
+        position: static;
+        display: block;
+        transform: none;
+        margin-top: 6px;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body class="desktop">
+  <main>
+    <header>
+      <div>
+        <h1>CHPI Verilog Fix Review</h1>
+        <div class="subtitle">檔名：CHPI_verilog_fix_windows.html。這頁不是單純把註釋變漂亮，而是把這次 RTL 失誤、修正方式、小面積資料流、完整 area-lean RTL、Icarus 仿真 PASS、以及後續規則全部放在同一份文件。</div>
+      </div>
+      <section class="cards">
+        <article class="card"><b>深刻檢討</b><p>原本把可模擬 code 寫得太像正式交付 RTL，且 clocked block 裡混了 blocking / non-blocking。</p></article>
+        <article class="card"><b>小面積方向</b><p>保留 20b/clk 吞吐，但移除 debug datapath，使用 26b raw buffer + 30b RGB buffer。</p></article>
+        <article class="card"><b>驗證後更新</b><p>Icarus line testbench 已 PASS：5 CTRL_L bytes + 960 RGB bytes 全部比對成功。</p></article>
+      </section>
+    </header>
+
+    <section class="panel">
+      <div class="panel-title">這次錯在哪 <span class="status-pass">review root cause</span></div>
+      <div class="deep-grid">
+        <article class="deep"><h3>1. 可仿真不等於可交付</h3><p>Icarus PASS 只能表示這個 testbench 下功能對，不能直接當成 synthesis sign-off。</p></article>
+        <article class="deep"><h3>2. blocking / non-blocking 混搭</h3><p>原始 code 在 posedge block 裡用 <code>=</code> 做 next-state，又用 <code>&lt;=</code> 做 DFF，reviewer 很難信任。</p></article>
+        <article class="deep"><h3>3. 電路分層不清</h3><p>aligner、parser、label state、restore、packer 混在一起，工程師不容易直接畫電路。</p></article>
+        <article class="deep"><h3>4. 小面積思考不完整</h3><p>真正的小面積要先守住吞吐，再縮 buffer/debug path；不是把單拍邏輯砍少就好。</p></article>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">小面積 RTL 主流程 <span class="status-pass">20b CHPI -> RGB24</span></div>
+      <div class="flow">
+        
+            <article class="flow-step">
+              <h3>CHPI[19:0] input</h3>
+              <p>每 clock 固定進 20bit，LSB first，沒有 backpressure。</p>
+            </article>
+            
+
+            <article class="flow-step">
+              <h3>26b raw aligner</h3>
+              <p>append 20bit，最多 drain 3 組 7bit，raw buffer 不需要做成大 FIFO。</p>
+            </article>
+            
+
+            <article class="flow-step">
+              <h3>7b parser</h3>
+              <p>每拍最多解析三組 7bit，守住 20/7 groups per clock 平均吞吐。</p>
+            </article>
+            
+
+            <article class="flow-step">
+              <h3>Header / Label state</h3>
+              <p>每個 420b packet 的第一組 7bit 是 {H, Label}，只更新狀態。</p>
+            </article>
+            
+
+            <article class="flow-step">
+              <h3>Restore datapath</h3>
+              <p>遇到 {Label,0}/{Label,1} 還原全 0 或全 1 的 7bit group。</p>
+            </article>
+            
+
+            <article class="flow-step">
+              <h3>30b RGB packer</h3>
+              <p>最多 23bit residue + 7bit group，所以 30bit buffer 足夠。</p>
+            </article>
+            
+
+            <article class="flow-step">
+              <h3>RGB24 output</h3>
+              <p>buffer &gt;= 24bit 時輸出一個 RGB24 word，一拍最多一個。</p>
+            </article>
+            
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">修改前 vs 修改後：逐行修正 <span class="status-pass">colored review notes</span></div>
+      <div class="fix-head">
+        <b>原始問題寫法</b>
+        <b>修改後寫法</b>
+        <b>彩色註釋：對應批評與修正理由</b>
+      </div>
+      
+      <section class="fix-row">
+        <div class="fix-code before">
+          <div class="col-title">原始問題寫法</div>
+          <pre><code>always @(posedge clk or negedge rst_n) begin
+  ...
+  raw_fifo_next = raw_fifo;
+  raw_cnt_next  = raw_cnt;
+  ...
+  raw_fifo &lt;= raw_fifo_next;
+end</code></pre>
+        </div>
+        <div class="fix-code after">
+          <div class="col-title">修改後小面積 RTL</div>
+          <pre><code>always @* begin
+  raw_fifo_w = raw_fifo_q;
+  raw_cnt_w  = raw_cnt_q;
+  ...
+  raw_fifo_n = raw_fifo_w;
+  raw_cnt_n  = raw_cnt_w;
+end
+
+always @(posedge clk or negedge rst_n) begin
+  raw_fifo_q &lt;= raw_fifo_n;
+  raw_cnt_q  &lt;= raw_cnt_n;
+end</code></pre>
+        </div>
+        <div class="fix-notes">
+          <div class="col-title">怎麼改、為什麼</div>
+          <div class="fix-note assign"><div><span class="note-badge assign">阻塞/非阻塞混搭</span></div><p>原本在 clocked block 裡用 <code>=</code> 算 next-state，又用 <code>&lt;=</code> 更新 DFF。修改後組合邏輯和 DFF 分開，工程師看到 <code>always @*</code> 就知道那不是暫存器。</p></div><div class="fix-note circuit"><div><span class="note-badge circuit">電路概念</span></div><p><code>*_q</code> 是 DFF 現值，<code>*_n</code> 是下一拍，<code>*_w</code> 是組合中間線。這樣能直接畫出 register 與 mux/adder。</p></div>
+        </div>
+      </section>
+    
+      <section class="fix-row">
+        <div class="fix-code before">
+          <div class="col-title">原始問題寫法</div>
+          <pre><code>// useful20 debug path has its own FIFO/counter
+reg [25:0] useful_fifo, useful_fifo_next;
+reg [5:0]  useful_cnt, useful_cnt_next;
+...
+useful_fifo_next = useful_fifo_next | (...);
+useful_cnt_next  = useful_cnt_next + 6'd7;</code></pre>
+        </div>
+        <div class="fix-code after">
+          <div class="col-title">修改後小面積 RTL</div>
+          <pre><code>// useful20 is debug only, not production RGB path.
+assign useful20_valid = 1'b0;
+assign useful20_data  = 20'd0;</code></pre>
+        </div>
+        <div class="fix-notes">
+          <div class="col-title">怎麼改、為什麼</div>
+          <div class="fix-note area"><div><span class="note-badge area">小面積修正</span></div><p>原本為 debug output 多放一套 FIFO/counter/datapath。正式 RGB24 decoder 不需要這條路，直接 tie-off，少掉一批暫存器與 mux。</p></div><div class="fix-note read"><div><span class="note-badge read">可讀性</span></div><p>把 <code>useful20</code> 標成 debug observation，避免 reviewer 以為它是主資料路徑的一部分。</p></div>
+        </div>
+      </section>
+    
+      <section class="fix-row">
+        <div class="fix-code before">
+          <div class="col-title">原始問題寫法</div>
+          <pre><code>// tempting but wrong for continuous input
+// parse only one 7b group per clock
+if (raw_cnt &gt;= 7) begin
+  pop_one_group();
+end</code></pre>
+        </div>
+        <div class="fix-code after">
+          <div class="col-title">修改後小面積 RTL</div>
+          <pre><code>// continuous CHPI[19:0] input needs 20/7 groups/clk.
+// Drain up to three 7b groups per clock to keep raw buffer small.
+for (k = 0; k &lt; 3; k = k + 1) begin
+  if (raw_cnt_w &gt;= 5'd7) begin
+    group_in_w = raw_fifo_w[6:0];
+    ...
+  end
+end</code></pre>
+        </div>
+        <div class="fix-notes">
+          <div class="col-title">怎麼改、為什麼</div>
+          <div class="fix-note area"><div><span class="note-badge area">面積不是只看單拍邏輯</span></div><p>一拍只解 7bit 看起來邏輯少，但 input 每拍固定進 20bit、沒有 backpressure，長時間會累積 backlog，需要更大的 FIFO，總面積反而可能更差。</p></div><div class="fix-note synth"><div><span class="note-badge synth">吞吐需求</span></div><p>20bit/clk 連續進來，平均需要 20/7 組 7bit/clk 的解析率，所以一拍最多解 3 組是為了守住吞吐與小 buffer。</p></div>
+        </div>
+      </section>
+    
+      <section class="fix-row">
+        <div class="fix-code before">
+          <div class="col-title">原始問題寫法</div>
+          <pre><code>reg [31:0] rgb_fifo, rgb_fifo_next;
+reg [5:0]  rgb_cnt, rgb_cnt_next;
+
+reg [25:0] raw_fifo, raw_fifo_next;
+reg [5:0]  raw_cnt, raw_cnt_next;</code></pre>
+        </div>
+        <div class="fix-code after">
+          <div class="col-title">修改後小面積 RTL</div>
+          <pre><code>reg [25:0] raw_fifo_q, raw_fifo_n;
+reg [4:0]  raw_cnt_q, raw_cnt_n;
+
+reg [29:0] rgb_fifo_q, rgb_fifo_n;
+reg [4:0]  rgb_cnt_q, rgb_cnt_n;</code></pre>
+        </div>
+        <div class="fix-notes">
+          <div class="col-title">怎麼改、為什麼</div>
+          <div class="fix-note area"><div><span class="note-badge area">buffer 位寬收斂</span></div><p>raw buffer 保留 26bit：每拍加 20bit、最多 drain 21bit，計數上界低於 27。RGB buffer 保留 30bit：最多 23bit residue 再加一組 7bit。</p></div><div class="fix-note read"><div><span class="note-badge read">可綜合意圖</span></div><p>counter 改成 5bit，位寬原因寫在註釋裡，讓 reviewer 知道不是隨便抓 32/6bit。</p></div>
+        </div>
+      </section>
+    
+      <section class="fix-row">
+        <div class="fix-code before">
+          <div class="col-title">原始問題寫法</div>
+          <pre><code>if (bit_cnt_420_next == 9'd0) begin
+  label_reg  = group_in[5:0];
+  replace_en = (group_in[5:0] != {6{~group_in[6]}});
+end</code></pre>
+        </div>
+        <div class="fix-code after">
+          <div class="col-title">修改後小面積 RTL</div>
+          <pre><code>if (bit_cnt_420_w == 9'd0) begin
+  label_w      = group_in_w[5:0];
+  replace_en_w = (group_in_w[5:0] != {6{~group_in_w[6]}});
+end
+
+label_n      = label_w;
+replace_en_n = replace_en_w;</code></pre>
+        </div>
+        <div class="fix-notes">
+          <div class="col-title">怎麼改、為什麼</div>
+          <div class="fix-note assign"><div><span class="note-badge assign">blocking 放錯位置</span></div><p>原本 <code>label_reg = ...</code> 在 clock block 裡，像是暫存器又像組合線。修改後 header 更新先成為 <code>label_n</code>，下一拍進 <code>label_q</code>。</p></div><div class="fix-note circuit"><div><span class="note-badge circuit">header 不進 RGB</span></div><p>420b packet 第一組 7bit 是 <code>{H, Label}</code>，只更新狀態，不送入 RGB packer。這個狀態邊界要寫清楚。</p></div>
+        </div>
+      </section>
+    
+      <section class="fix-row">
+        <div class="fix-code before">
+          <div class="col-title">原始問題寫法</div>
+          <pre><code>rgb_valid &lt;= 1'b0;
+...
+if (rgb_cnt_next &gt;= 6'd24) begin
+  rgb_data  &lt;= rgb_fifo_next[23:0];
+  rgb_valid &lt;= 1'b1;
+end
+...
+if (!rgb_emit_done &amp;&amp; (rgb_cnt_next &gt;= 6'd24)) begin
+  rgb_data  &lt;= rgb_fifo_next[23:0];
+  rgb_valid &lt;= 1'b1;
+end</code></pre>
+        </div>
+        <div class="fix-code after">
+          <div class="col-title">修改後小面積 RTL</div>
+          <pre><code>rgb_valid_n   = 1'b0;
+rgb_data_n    = rgb_data;
+rgb_emit_seen = 1'b0;
+
+if (!rgb_emit_seen &amp;&amp; (rgb_cnt_w &gt;= 5'd24)) begin
+  rgb_data_n    = rgb_fifo_w[23:0];
+  rgb_valid_n   = 1'b1;
+  rgb_fifo_w    = rgb_fifo_w &gt;&gt; 24;
+  rgb_cnt_w     = rgb_cnt_w - 5'd24;
+  rgb_emit_seen = 1'b1;
+end</code></pre>
+        </div>
+        <div class="fix-notes">
+          <div class="col-title">怎麼改、為什麼</div>
+          <div class="fix-note read"><div><span class="note-badge read">單點 output</span></div><p>原本多處直接寫 <code>rgb_valid/rgb_data</code>，review 時很像隱性 priority mux。修改後只產生 <code>rgb_valid_n/rgb_data_n</code>，DFF block 統一 sample。</p></div><div class="fix-note circuit"><div><span class="note-badge circuit">一拍一個 RGB24</span></div><p><code>rgb_emit_seen</code> 明確限制一拍最多輸出一個 RGB24 word，輸出節奏可以被檢查。</p></div>
+        </div>
+      </section>
+    
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">小面積取捨說明 <span class="status-pass">area-lean rationale</span></div>
+      <div class="area-grid">
+        <article class="area-box"><b>為何不是一拍只解 7bit</b><p>input 固定 20b/clk 連續進來，若只解 7b/clk，資料會累積，需要大 FIFO，面積不一定小。</p></article>
+        <article class="area-box"><b>raw buffer = 26bit</b><p>每拍 append 20bit，最多 drain 3 組 7bit，raw residue 上界低於 27bit。</p></article>
+        <article class="area-box"><b>RGB buffer = 30bit</b><p>RGB packer 最多 23bit residue，再加一個 7bit restored group，所以 30bit 足夠。</p></article>
+        <article class="area-box"><b>useful20 tie-off</b><p>debug observation path 不屬於正式 RGB 資料路徑，拿掉 FIFO/counter 可減少面積。</p></article>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">修改後完整 RTL <span class="file-name">chpi_long_decoder_rgb24_area_lean.v</span></div>
+      <pre class="code-block"><code>`timescale 1ns/1ps
+
+module chpi_decode_20b_stream_top (
+  input  wire        clk,
+  input  wire        rst_n,
+  input  wire        valid_i,
+  input  wire [19:0] chpi_in,
+  output wire        rgb_valid,
+  output wire [23:0] rgb_data,
+  output wire        useful20_valid,
+  output wire [19:0] useful20_data
+);
+  chpi_420b413b_rgb24_stream_dec u_dec (
+    .clk            (clk),
+    .rst_n          (rst_n),
+    .valid_i        (valid_i),
+    .chpi_in        (chpi_in),
+    .rgb_valid      (rgb_valid),
+    .rgb_data       (rgb_data),
+    .useful20_valid (useful20_valid),
+    .useful20_data  (useful20_data)
+  );
+endmodule
+
+module chpi_420b413b_rgb24_stream_dec (
+  input  wire        clk,
+  input  wire        rst_n,
+  input  wire        valid_i,
+  input  wire [19:0] chpi_in,
+  output reg         rgb_valid,
+  output reg  [23:0] rgb_data,
+  output wire        useful20_valid,
+  output wire [19:0] useful20_data
+);
+  // useful20 is a debug observation path in earlier demos. Tie it off here to
+  // keep the production RGB path smaller.
+  assign useful20_valid = 1'b0;
+  assign useful20_data  = 20'd0;
+
+  // Small-buffer state for a continuous 20b input stream.
+  // raw_cnt_q is bounded to 0..26 because each clock appends 20b and drains
+  // up to three 7b groups. A slower one-group parser would require a large
+  // backlog buffer when valid_i is continuous.
+  reg [25:0] raw_fifo_q, raw_fifo_n;
+  reg [4:0]  raw_cnt_q, raw_cnt_n;
+
+  // RGB packer holds at most 30 valid bits: 23 old bits + one 7b group.
+  reg [29:0] rgb_fifo_q, rgb_fifo_n;
+  reg [4:0]  rgb_cnt_q, rgb_cnt_n;
+
+  reg [8:0]  bit_cnt_420_q, bit_cnt_420_n;
+  reg [5:0]  label_q, label_n;
+  reg        replace_en_q, replace_en_n;
+
+  reg        rgb_valid_n;
+  reg [23:0] rgb_data_n;
+
+  reg [25:0] raw_fifo_w;
+  reg [4:0]  raw_cnt_w;
+  reg [29:0] rgb_fifo_w;
+  reg [4:0]  rgb_cnt_w;
+  reg [8:0]  bit_cnt_420_w;
+  reg [5:0]  label_w;
+  reg        replace_en_w;
+  reg        rgb_emit_seen;
+  reg [6:0]  group_in_w;
+  reg [6:0]  group_out_w;
+  integer    k;
+
+  always @* begin
+    raw_fifo_w    = raw_fifo_q;
+    raw_cnt_w     = raw_cnt_q;
+    rgb_fifo_w    = rgb_fifo_q;
+    rgb_cnt_w     = rgb_cnt_q;
+    bit_cnt_420_w = bit_cnt_420_q;
+    label_w       = label_q;
+    replace_en_w  = replace_en_q;
+    rgb_valid_n   = 1'b0;
+    rgb_data_n    = rgb_data;
+    rgb_emit_seen = 1'b0;
+    group_in_w    = 7'd0;
+    group_out_w   = 7'd0;
+
+    // First drain an old RGB24 word if the packer already has enough bits.
+    if (rgb_cnt_w &gt;= 5'd24) begin
+      rgb_data_n    = rgb_fifo_w[23:0];
+      rgb_valid_n   = 1'b1;
+      rgb_fifo_w    = rgb_fifo_w &gt;&gt; 24;
+      rgb_cnt_w     = rgb_cnt_w - 5'd24;
+      rgb_emit_seen = 1'b1;
+    end
+
+    // Append one CHPI[19:0] input word, LSB first.
+    if (valid_i) begin
+      raw_fifo_w = raw_fifo_w | ({{6{1'b0}}, chpi_in} &lt;&lt; raw_cnt_w);
+      raw_cnt_w  = raw_cnt_w + 5'd20;
+    end
+
+    // Throughput note:
+    // Continuous 20b input needs 20/7 groups per clock on average, therefore
+    // this parser must drain two or three 7b groups per clock. This keeps the
+    // raw buffer small instead of storing a whole line or a large backlog.
+    for (k = 0; k &lt; 3; k = k + 1) begin
+      if (raw_cnt_w &gt;= 5'd7) begin
+        group_in_w = raw_fifo_w[6:0];
+
+        if (bit_cnt_420_w == 9'd0) begin
+          // Header group: {H, Label}. It updates state and is not RGB data.
+          label_w      = group_in_w[5:0];
+          replace_en_w = (group_in_w[5:0] != {6{~group_in_w[6]}});
+        end else begin
+          // Payload group: restore the label-coded all-0/all-1 cases.
+          if (replace_en_w &amp;&amp; (group_in_w[6:1] == label_w)) begin
+            group_out_w = group_in_w[0] ? 7'b1111111 : 7'b0000000;
+          end else begin
+            group_out_w = group_in_w;
+          end
+
+          rgb_fifo_w = rgb_fifo_w | ({{23{1'b0}}, group_out_w} &lt;&lt; rgb_cnt_w);
+          rgb_cnt_w  = rgb_cnt_w + 5'd7;
+
+          if (!rgb_emit_seen &amp;&amp; (rgb_cnt_w &gt;= 5'd24)) begin
+            rgb_data_n    = rgb_fifo_w[23:0];
+            rgb_valid_n   = 1'b1;
+            rgb_fifo_w    = rgb_fifo_w &gt;&gt; 24;
+            rgb_cnt_w     = rgb_cnt_w - 5'd24;
+            rgb_emit_seen = 1'b1;
+          end
+        end
+
+        raw_fifo_w    = raw_fifo_w &gt;&gt; 7;
+        raw_cnt_w     = raw_cnt_w - 5'd7;
+        bit_cnt_420_w = (bit_cnt_420_w == 9'd413) ? 9'd0
+                                                   : bit_cnt_420_w + 9'd7;
+      end
+    end
+
+    raw_fifo_n    = raw_fifo_w;
+    raw_cnt_n     = raw_cnt_w;
+    rgb_fifo_n    = rgb_fifo_w;
+    rgb_cnt_n     = rgb_cnt_w;
+    bit_cnt_420_n = bit_cnt_420_w;
+    label_n       = label_w;
+    replace_en_n  = replace_en_w;
+  end
+
+  always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      raw_fifo_q    &lt;= 26'd0;
+      raw_cnt_q     &lt;= 5'd0;
+      rgb_fifo_q    &lt;= 30'd0;
+      rgb_cnt_q     &lt;= 5'd0;
+      bit_cnt_420_q &lt;= 9'd0;
+      label_q       &lt;= 6'd0;
+      replace_en_q  &lt;= 1'b0;
+      rgb_valid     &lt;= 1'b0;
+      rgb_data      &lt;= 24'd0;
+    end else begin
+      raw_fifo_q    &lt;= raw_fifo_n;
+      raw_cnt_q     &lt;= raw_cnt_n;
+      rgb_fifo_q    &lt;= rgb_fifo_n;
+      rgb_cnt_q     &lt;= rgb_cnt_n;
+      bit_cnt_420_q &lt;= bit_cnt_420_n;
+      label_q       &lt;= label_n;
+      replace_en_q  &lt;= replace_en_n;
+      rgb_valid     &lt;= rgb_valid_n;
+      rgb_data      &lt;= rgb_data_n;
+    end
+  end
+endmodule
+</code></pre>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">我已自行跑仿真確認 <span class="status-pass">Icarus PASS</span></div>
+      <div class="sim-grid">
+        <article class="sim-box">
+          <h3>執行命令</h3>
+          <p><code>iverilog -g2012 -Wall -o chpi_area_lean_line_tb.out chpi_long_decoder_rgb24_line_tb.v chpi_long_decoder_rgb24_area_lean.v</code></p>
+          <p><code>vvp chpi_area_lean_line_tb.out</code></p>
+          <p>測試內容：5 byte CTRL_L + 960 byte RGB，一整行資料經 413b/420b pack 後，以 CHPI[19:0] 連續輸入 decoder。</p>
+        </article>
+        <pre class="pass-log"><code>VCD info: dumpfile chpi_long_decoder_rgb24_line_tb.vcd opened for output.
+One-line test: CTRL_L=5 bytes, RGB=960 bytes, total=965 bytes
+Line bits=7720, CHPI blocks=19, encoded bits=7980, raw 20b clocks=399
+Decoder can emit 326 RGB24 words = 978 bytes; padding bytes checked as zero
+CTRL PASS byte[0] = c1 time=75000
+CTRL PASS byte[1] = 7e time=75000
+CTRL PASS byte[2] = 55 time=75000
+CTRL PASS byte[3] = aa time=85000
+CTRL PASS byte[4] = 5a time=85000
+RGB PASS byte[0] = 00 time=85000
+RGB PASS byte[959] = bf time=3995000
+PASS: complete line matched: 5 CTRL_L bytes + 960 RGB bytes
+Output RGB24 words=326, checked bytes=978
+C:\Users\liuzhengqin\Documents\chpi_long_decoder_rgb24_line_tb.v:218: $finish called at 5235000 (1ps)
+</code></pre>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">後續 RTL 規則檔 <span class="file-name">rtl_rule.txt / revise history included</span></div>
+      <pre class="rule-block"><code>RTL Rule File for CHPI / DDIC Digital Helper Work
+=================================================
+
+Purpose
+-------
+This file records the RTL mistakes found during the CHPI 413b/420b decoder
+review. Before producing or revising RTL later, Codex should read this file
+first and apply the checklist below.
+
+
+Core Rules
+----------
+
+R001 - Do not present simulation-only RTL as production RTL.
+  Mistake seen:
+    Icarus PASS was described too close to "deliverable RTL".
+  Required behavior:
+    Every RTL output must be labeled as one of:
+      - concept / trace code
+      - simulation demo RTL
+      - synthesis-intended RTL
+      - production candidate RTL
+  Verification requirement:
+    If claiming synthesis-intended RTL, at minimum run syntax simulation and
+    explicitly state that company lint/synthesis/timing sign-off is still
+    required unless those tools were actually run.
+
+R002 - Do not mix blocking and non-blocking assignment in one clocked process.
+  Mistake seen:
+    A posedge always block used blocking assignment for next-state variables
+    and non-blocking assignment for flops in the same block.
+  Required behavior:
+    Use a two-process style for non-trivial RTL:
+      - always @* or always_comb: combinational next-state only, use "=".
+      - always @(posedge clk or negedge rst_n): DFF update only, use "&lt;=".
+  Naming convention:
+      *_q : registered current state
+      *_n : next state sampled by DFF
+      *_w : combinational work/intermediate value
+
+R003 - Make the hardware structure readable.
+  Mistake seen:
+    Input aligner, header/label FSM, restore datapath, and RGB packer were
+    mixed together without clear hardware boundaries.
+  Required behavior:
+    The code must show the hardware stages in comments and naming:
+      - input aligner
+      - 7b parser
+      - header/label state
+      - restore datapath
+      - RGB24 packer
+      - optional debug observation path, if any
+  Review standard:
+    A digital engineer should be able to draw DFFs, muxes, counters, and
+    datapath widths from the code without guessing.
+
+R004 - Area is not simply "fewer operations per clock".
+  Mistake seen:
+    A one-group-per-clock decoder was considered, but continuous 20b input has
+    no backpressure. That would need a large backlog buffer and may increase
+    area.
+  Required behavior:
+    For fixed-rate input streams, preserve the required throughput first, then
+    minimize buffers and remove non-production debug paths.
+  CHPI decoder conclusion:
+    Continuous CHPI[19:0] input needs 20/7 payload-group parsing rate on
+    average. To keep the raw buffer small, parse up to three 7b groups per
+    clock. A slower parser needs a large FIFO or input stall mechanism.
+
+R005 - Avoid unnecessary debug datapath in production-intended RTL.
+  Mistake seen:
+    useful20 debug output had its own FIFO/counter datapath, increasing state
+    and logic even though RGB24 is the real output.
+  Required behavior:
+    If a debug output is required by the interface but not production behavior,
+    tie it off or isolate it behind an explicit parameter.
+  CHPI area-lean decision:
+    useful20_valid = 1'b0 and useful20_data = 20'd0 in the area-lean RTL.
+
+R006 - Keep buffer width justified by throughput and residue.
+  Mistake seen:
+    Buffer size was not explained clearly enough.
+  Required behavior:
+    State why each buffer width exists.
+  CHPI area-lean decoder:
+    raw_fifo_q  : 26 bits, because one clock appends 20b and parser drains up
+                  to three 7b groups; raw_cnt is bounded below 27.
+    rgb_fifo_q  : 30 bits, because packer can hold up to 23 old bits then add
+                  one 7b group before emitting RGB24.
+    raw_cnt_q   : 5 bits is enough for 0..26.
+    rgb_cnt_q   : 5 bits is enough for 0..30.
+
+R007 - Output valid/data should have one clear generation path.
+  Mistake seen:
+    rgb_valid/rgb_data were assigned in several places inside the same clocked
+    block.
+  Required behavior:
+    Compute rgb_valid_n/rgb_data_n in combinational logic, then update the DFF
+    once in the sequential block.
+  If only one output word per clock is allowed:
+    Use an explicit emit flag such as rgb_emit_seen to avoid multiple writes to
+    the same output in one cycle.
+
+R008 - Header/label must be explicit state, not hidden temporary behavior.
+  Mistake seen:
+    label_reg and replace_en were blocking-assigned inside the clocked parser.
+  Required behavior:
+    Use label_q/label_n and replace_en_q/replace_en_n. The first 7b group of
+    each 420b packet updates header/label state and must not enter RGB data.
+
+R009 - Use exact bit order and width comments.
+  Mistake seen:
+    Some explanations were unclear about LSB-first order and bus packing.
+  Required behavior:
+    For every encoder/decoder RTL:
+      - state whether input is LSB-first or MSB-first
+      - state input bus width
+      - state output bus width
+      - state packet/header widths
+      - state residue/buffer strategy
+
+R010 - Simulation must be run before updating user-facing HTML/site.
+  Mistake seen:
+    Documentation was polished before the RTL quality was sufficiently checked.
+  Required behavior:
+    For any HTML page that presents RTL as corrected, run the relevant testbench
+    first and show:
+      - simulator name
+      - command
+      - PASS/FAIL result
+      - tested data scope
+
+
+Current Verified RTL
+--------------------
+
+File:
+  chpi_long_decoder_rgb24_area_lean.v
+
+Purpose:
+  Synthesis-intended, area-lean CHPI 420b to 413b decoder demo for continuous
+  CHPI[19:0] input and RGB24 output.
+
+Area-lean choices:
+  - Remove useful20 debug FIFO/counter datapath by tying debug output off.
+  - Keep continuous 20b throughput by parsing up to three 7b groups per clock.
+  - Use 26b raw buffer and 30b RGB buffer instead of large line/backlog buffer.
+  - Use two-process RTL style for readable combinational/DFF separation.
+
+Simulation:
+  Tool:
+    Icarus Verilog
+  Command:
+    iverilog -g2012 -Wall -o chpi_area_lean_line_tb.out
+      chpi_long_decoder_rgb24_line_tb.v
+      chpi_long_decoder_rgb24_area_lean.v
+    vvp chpi_area_lean_line_tb.out
+  Result:
+    PASS: complete line matched: 5 CTRL_L bytes + 960 RGB bytes
+    Output RGB24 words=326, checked bytes=978
+
+Limitations:
+  - Icarus PASS is not company synthesis sign-off.
+  - Company lint, synthesis compile, timing, reset policy, and CDC checks are
+    still required before production handoff.
+
+
+Pre-Delivery Checklist
+----------------------
+
+[ ] Did I label the RTL maturity level correctly?
+[ ] Did I avoid blocking assignment inside DFF update logic?
+[ ] Are all DFFs visible in a clean sequential block?
+[ ] Are hardware stages named and commented?
+[ ] Are buffer widths justified?
+[ ] Did I avoid debug logic unless explicitly needed?
+[ ] Did I verify throughput and backlog behavior?
+[ ] Did I run the relevant testbench?
+[ ] Did I paste the exact PASS log into the review document?
+[ ] Did I avoid updating public HTML before simulation passed?
+
+
+Revise History
+--------------
+
+2026-06-07 Rev A
+  Initial rule file created after CHPI decoder RTL review.
+  Root cause:
+    Earlier RTL was too close to trace/demo code, mixed blocking and
+    non-blocking assignment inside one clocked block, did not communicate
+    hardware structure clearly, and was not area-focused enough.
+  Action:
+    Added R001-R010, area-lean CHPI decoder guidance, simulation requirement,
+    and pre-delivery checklist.
+</code></pre>
+    </section>
+  </main>
+</body>
+</html>
