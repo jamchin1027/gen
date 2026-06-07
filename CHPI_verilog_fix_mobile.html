@@ -12,7 +12,9 @@
       --muted: #5d6675;
       --panel: #ffffff;
       --line: #d6deea;
-      --code: #10151f;
+      --code: #05070b;
+      --code-ink: #fbfdff;
+      --code-comment: #ffe45c;
       --bad: #b42318;
       --bad-soft: #fde8e7;
       --good: #14783d;
@@ -166,7 +168,7 @@
     .fix-head {
       display: grid;
       grid-template-columns: 1fr;
-      gap: 10px;
+      gap: 8px;
       padding: 10px 10px 0;
     }
     .fix-head b, .col-title {
@@ -181,7 +183,7 @@
     .fix-row {
       display: grid;
       grid-template-columns: 1fr;
-      gap: 10px;
+      gap: 8px;
       padding: 10px;
       border-top: 1px solid #edf1f7;
     }
@@ -192,7 +194,7 @@
       margin: 0;
       overflow: auto;
       background: var(--code);
-      color: #e8edf7;
+      color: var(--code-ink);
       border-radius: 7px;
       font: 10px/1.5 Consolas, "Courier New", monospace;
       white-space: pre;
@@ -245,6 +247,16 @@
       background: rgba(255,255,255,0.62);
       border-radius: 4px;
       padding: 0 3px;
+    }
+    pre code {
+      color: inherit;
+      background: transparent;
+      border-radius: 0;
+      padding: 0;
+    }
+    .code-comment {
+      color: var(--code-comment);
+      font-weight: 800;
     }
     .area-grid {
       display: grid;
@@ -333,8 +345,8 @@
       }
       .desktop .fix-head,
       .desktop .fix-row {
-        grid-template-columns: minmax(300px, 1fr) minmax(300px, 1fr) minmax(270px, 0.78fr);
-        min-width: 940px;
+        grid-template-columns: minmax(270px, 0.82fr) minmax(270px, 0.82fr) minmax(300px, 1fr);
+        min-width: 900px;
       }
       .desktop .area-grid {
         grid-template-columns: repeat(4, minmax(180px, 1fr));
@@ -347,7 +359,7 @@
     }
     .mobile main {
       max-width: none;
-      min-width: 1040px;
+      min-width: 1000px;
     }
     .mobile header {
       grid-template-columns: minmax(320px, 0.82fr) minmax(650px, 1.18fr);
@@ -380,8 +392,8 @@
     }
     .mobile .fix-head,
     .mobile .fix-row {
-      grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr) minmax(280px, 0.76fr);
-      min-width: 980px;
+      grid-template-columns: minmax(290px, 0.82fr) minmax(290px, 0.82fr) minmax(320px, 1fr);
+      min-width: 930px;
     }
     .mobile .fix-code pre {
       min-height: 150px;
@@ -510,7 +522,7 @@ end</code></pre>
       <section class="fix-row">
         <div class="fix-code before">
           <div class="col-title">原始問題寫法</div>
-          <pre><code>// useful20 debug path has its own FIFO/counter
+          <pre><code><span class="code-comment">// useful20 debug path has its own FIFO/counter</span>
 reg [25:0] useful_fifo, useful_fifo_next;
 reg [5:0]  useful_cnt, useful_cnt_next;
 ...
@@ -519,7 +531,7 @@ useful_cnt_next  = useful_cnt_next + 6'd7;</code></pre>
         </div>
         <div class="fix-code after">
           <div class="col-title">修改後小面積 RTL</div>
-          <pre><code>// useful20 is debug only, not production RGB path.
+          <pre><code><span class="code-comment">// useful20 is debug only, not production RGB path.</span>
 assign useful20_valid = 1'b0;
 assign useful20_data  = 20'd0;</code></pre>
         </div>
@@ -532,16 +544,16 @@ assign useful20_data  = 20'd0;</code></pre>
       <section class="fix-row">
         <div class="fix-code before">
           <div class="col-title">原始問題寫法</div>
-          <pre><code>// tempting but wrong for continuous input
-// parse only one 7b group per clock
+          <pre><code><span class="code-comment">// tempting but wrong for continuous input</span>
+<span class="code-comment">// parse only one 7b group per clock</span>
 if (raw_cnt &gt;= 7) begin
   pop_one_group();
 end</code></pre>
         </div>
         <div class="fix-code after">
           <div class="col-title">修改後小面積 RTL</div>
-          <pre><code>// continuous CHPI[19:0] input needs 20/7 groups/clk.
-// Drain up to three 7b groups per clock to keep raw buffer small.
+          <pre><code><span class="code-comment">// continuous CHPI[19:0] input needs 20/7 groups/clk.</span>
+<span class="code-comment">// Drain up to three 7b groups per clock to keep raw buffer small.</span>
 for (k = 0; k &lt; 3; k = k + 1) begin
   if (raw_cnt_w &gt;= 5'd7) begin
     group_in_w = raw_fifo_w[6:0];
@@ -685,19 +697,19 @@ module chpi_420b413b_rgb24_stream_dec (
   output wire        useful20_valid,
   output wire [19:0] useful20_data
 );
-  // useful20 is a debug observation path in earlier demos. Tie it off here to
-  // keep the production RGB path smaller.
+  <span class="code-comment">// useful20 is a debug observation path in earlier demos. Tie it off here to</span>
+  <span class="code-comment">// keep the production RGB path smaller.</span>
   assign useful20_valid = 1'b0;
   assign useful20_data  = 20'd0;
 
-  // Small-buffer state for a continuous 20b input stream.
-  // raw_cnt_q is bounded to 0..26 because each clock appends 20b and drains
-  // up to three 7b groups. A slower one-group parser would require a large
-  // backlog buffer when valid_i is continuous.
+  <span class="code-comment">// Small-buffer state for a continuous 20b input stream.</span>
+  <span class="code-comment">// raw_cnt_q is bounded to 0..26 because each clock appends 20b and drains</span>
+  <span class="code-comment">// up to three 7b groups. A slower one-group parser would require a large</span>
+  <span class="code-comment">// backlog buffer when valid_i is continuous.</span>
   reg [25:0] raw_fifo_q, raw_fifo_n;
   reg [4:0]  raw_cnt_q, raw_cnt_n;
 
-  // RGB packer holds at most 30 valid bits: 23 old bits + one 7b group.
+  <span class="code-comment">// RGB packer holds at most 30 valid bits: 23 old bits + one 7b group.</span>
   reg [29:0] rgb_fifo_q, rgb_fifo_n;
   reg [4:0]  rgb_cnt_q, rgb_cnt_n;
 
@@ -734,7 +746,7 @@ module chpi_420b413b_rgb24_stream_dec (
     group_in_w    = 7'd0;
     group_out_w   = 7'd0;
 
-    // First drain an old RGB24 word if the packer already has enough bits.
+    <span class="code-comment">// First drain an old RGB24 word if the packer already has enough bits.</span>
     if (rgb_cnt_w &gt;= 5'd24) begin
       rgb_data_n    = rgb_fifo_w[23:0];
       rgb_valid_n   = 1'b1;
@@ -743,26 +755,26 @@ module chpi_420b413b_rgb24_stream_dec (
       rgb_emit_seen = 1'b1;
     end
 
-    // Append one CHPI[19:0] input word, LSB first.
+    <span class="code-comment">// Append one CHPI[19:0] input word, LSB first.</span>
     if (valid_i) begin
       raw_fifo_w = raw_fifo_w | ({{6{1'b0}}, chpi_in} &lt;&lt; raw_cnt_w);
       raw_cnt_w  = raw_cnt_w + 5'd20;
     end
 
-    // Throughput note:
-    // Continuous 20b input needs 20/7 groups per clock on average, therefore
-    // this parser must drain two or three 7b groups per clock. This keeps the
-    // raw buffer small instead of storing a whole line or a large backlog.
+    <span class="code-comment">// Throughput note:</span>
+    <span class="code-comment">// Continuous 20b input needs 20/7 groups per clock on average, therefore</span>
+    <span class="code-comment">// this parser must drain two or three 7b groups per clock. This keeps the</span>
+    <span class="code-comment">// raw buffer small instead of storing a whole line or a large backlog.</span>
     for (k = 0; k &lt; 3; k = k + 1) begin
       if (raw_cnt_w &gt;= 5'd7) begin
         group_in_w = raw_fifo_w[6:0];
 
         if (bit_cnt_420_w == 9'd0) begin
-          // Header group: {H, Label}. It updates state and is not RGB data.
+          <span class="code-comment">// Header group: {H, Label}. It updates state and is not RGB data.</span>
           label_w      = group_in_w[5:0];
           replace_en_w = (group_in_w[5:0] != {6{~group_in_w[6]}});
         end else begin
-          // Payload group: restore the label-coded all-0/all-1 cases.
+          <span class="code-comment">// Payload group: restore the label-coded all-0/all-1 cases.</span>
           if (replace_en_w &amp;&amp; (group_in_w[6:1] == label_w)) begin
             group_out_w = group_in_w[0] ? 7'b1111111 : 7'b0000000;
           end else begin
@@ -820,8 +832,7 @@ module chpi_420b413b_rgb24_stream_dec (
       rgb_data      &lt;= rgb_data_n;
     end
   end
-endmodule
-</code></pre>
+endmodule</code></pre>
     </section>
 
     <section class="panel">
