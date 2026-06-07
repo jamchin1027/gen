@@ -43,9 +43,9 @@
 
     header {
       display: grid;
-      grid-template-columns: minmax(360px, auto) 1fr auto;
+      grid-template-columns: minmax(430px, max-content) minmax(0, 1fr) auto;
       align-items: flex-end;
-      gap: 16px;
+      gap: 12px;
       min-width: 0;
     }
 
@@ -83,33 +83,37 @@
     }
 
     .page-tabs {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: center;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(92px, 1fr));
+      gap: 6px;
+      justify-content: stretch;
       padding: 0;
+      min-width: 0;
     }
 
     .page-tab {
-      min-width: 118px;
+      min-width: 0;
       height: 34px;
-      padding: 0 14px;
+      padding: 0 8px;
       border: 1px solid #b7bfcc;
       border-radius: 7px;
       background: #fff;
       color: var(--ink);
       font: inherit;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 750;
       cursor: pointer;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .page-tab[data-page="rgb"] {
-      min-width: 300px;
+      min-width: 0;
     }
 
     .page-tab[data-page="sim"] {
-      min-width: 220px;
+      min-width: 0;
     }
 
     .page-tab.active {
@@ -638,8 +642,8 @@
         <button class="page-tab" type="button" data-page="flow">流程說明</button>
         <button class="page-tab" type="button" data-page="real">real case</button>
         <button class="page-tab" type="button" data-page="logic">decode電路邏輯&verilog</button>
-        <button class="page-tab" type="button" data-page="rgb">20bit CHPI / 420b pack → RGB24</button>
-        <button class="page-tab" type="button" data-page="sim">Simulation/files download</button>
+        <button class="page-tab" type="button" data-page="rgb">20b/420b → RGB24</button>
+        <button class="page-tab" type="button" data-page="sim">Simulation/files</button>
       </nav>
       <div class="status" id="status">
         <span class="status-dot" id="statusDot"></span>
