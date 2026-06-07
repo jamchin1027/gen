@@ -525,7 +525,7 @@
         <button class="page-tab" type="button" data-page="flow">流程說明</button>
         <button class="page-tab" type="button" data-page="real">real case</button>
         <button class="page-tab" type="button" data-page="logic">decode電路邏輯&verilog</button>
-        <button class="page-tab" type="button" data-page="rgb">420b pack解碼 → RGB24</button>
+        <button class="page-tab" type="button" data-page="rgb">20bit CHPI / 420b pack → RGB24</button>
       </nav>
       <div class="status" id="status">
         <span class="status-dot" id="statusDot"></span>
@@ -3727,12 +3727,12 @@ endmodule
     </section>
 
     <section class="page-view" data-view="rgb" hidden>
-      <iframe class="embedded-frame" title="420b pack解碼 → RGB24" srcdoc="&lt;!doctype html>
+      <iframe class="embedded-frame" title="20bit CHPI / 420b pack → RGB24" srcdoc="&lt;!doctype html>
 &lt;html lang=&quot;zh-Hant&quot;>
 &lt;head>
   &lt;meta charset=&quot;utf-8&quot;>
   &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
-  &lt;title>CHPI 420b pack to RGB24&lt;/title>
+  &lt;title>CHPI 20bit / 420b pack to RGB24&lt;/title>
   &lt;style>
     :root {
       color-scheme: light;
@@ -3998,7 +3998,7 @@ endmodule
   &lt;main>
     &lt;header>
       &lt;div>
-        &lt;h1>420b pack解碼 → 24bit RGB&lt;/h1>
+        &lt;h1>20bit CHPI / 420b pack解碼 → 24bit RGB&lt;/h1>
         &lt;div class=&quot;subtitle&quot;>同一個 P2P recovered clock，不做 CDC；420b 是一個 pack，每拍輸入 20b，每個 pack 第 1 拍扣 7b header，只新增 13b effective data，buffer 滿 24b 就吐 RGB。&lt;/div>
       &lt;/div>
       &lt;div class=&quot;badge&quot;>Input：CHPI[19:0] / clk　Output：RGB[23:0] + valid&lt;/div>
@@ -4135,13 +4135,193 @@ endmodule
           &lt;/tr>
         &lt;/tbody>
       &lt;/table>
+      &lt;div class=&quot;timeline-title&quot;>RTL 內部兩段式：先 restore/re-align 成 useful20，再由 useful20 湊 RGB24&lt;/div>
+      &lt;div class=&quot;timeline-hint&quot;>這張表看的是目前 Verilog 裡的中間觀察介面：raw &lt;code>CHPI[19:0]&lt;/code> → 去 header/label 還原 413b → &lt;code>useful20_valid&lt;/code>。所以 residue 是另一個層級。&lt;/div>
+      &lt;table style=&quot;margin-bottom:10px;&quot;>
+        &lt;thead>
+          &lt;tr>
+            &lt;th>raw p2p clock range&lt;/th>
+            &lt;th>raw CHPI input&lt;/th>
+            &lt;th>420 &amp;gt; 413 decode&lt;/th>
+            &lt;th>re-align useful20 output&lt;/th>
+            &lt;th>front-end residue&lt;/th>
+          &lt;/tr>
+        &lt;/thead>
+        &lt;tbody>
+          &lt;tr>
+            &lt;th>raw clk0 ~ clk20&lt;/th>
+            &lt;td>21 x 20b = 420b&lt;/td>
+            &lt;td>扣掉 7b Header/Label → 413 useful bits&lt;/td>
+            &lt;td>吐 U0 ~ U19，共 20 x 20b = 400b&lt;/td>
+            &lt;td>&lt;span class=&quot;byte hold&quot;>13b&lt;/span> 留到下一個 block&lt;/td>
+          &lt;/tr>
+          &lt;tr>
+            &lt;th>raw clk21 ~ clk41&lt;/th>
+            &lt;td>下一個 420b&lt;/td>
+            &lt;td>再扣 7b Header/Label → 新增 413 useful bits&lt;/td>
+            &lt;td>13b + 413b = 426b，吐 U20 ~ U40，共 21 個 useful20&lt;/td>
+            &lt;td>&lt;span class=&quot;byte hold&quot;>6b&lt;/span> 留到下一個 block&lt;/td>
+          &lt;/tr>
+          &lt;tr>
+            &lt;th>raw clk42 ~ clk62&lt;/th>
+            &lt;td>下一個 420b&lt;/td>
+            &lt;td>再扣 7b Header/Label → 新增 413 useful bits&lt;/td>
+            &lt;td>6b + 413b = 419b，吐 U41 ~ U60，共 20 個 useful20&lt;/td>
+            &lt;td>&lt;span class=&quot;byte hold&quot;>19b&lt;/span> 留到下一個 block&lt;/td>
+          &lt;/tr>
+          &lt;tr>
+            &lt;th>raw clk63 ~ clk83&lt;/th>
+            &lt;td>下一個 420b&lt;/td>
+            &lt;td>再扣 7b Header/Label → 新增 413 useful bits&lt;/td>
+            &lt;td>19b + 413b = 432b，吐 U61 ~ U81，共 21 個 useful20&lt;/td>
+            &lt;td>&lt;span class=&quot;byte hold&quot;>12b&lt;/span> 留到下一個 block&lt;/td>
+          &lt;/tr>
+        &lt;/tbody>
+      &lt;/table>
+      &lt;table>
+        &lt;thead>
+          &lt;tr>
+            &lt;th>RGB round / useful20_valid&lt;/th>
+            &lt;th>RGB packer input（已扣 Header）&lt;/th>
+            &lt;th>bit packer residue&lt;/th>
+            &lt;th>RGB output&lt;/th>
+            &lt;th>rgb_valid&lt;/th>
+          &lt;/tr>
+        &lt;/thead>
+        &lt;tbody>
+          &lt;tr>
+            &lt;th>A0 / U0&lt;/th>
+            &lt;td>20 useful bits：b0~b19&lt;/td>
+            &lt;td>&lt;span class=&quot;byte hold&quot;>20b&lt;/span>&lt;/td>
+            &lt;td>還不夠 24bit&lt;/td>
+            &lt;td>&lt;span class=&quot;byte&quot;>0&lt;/span>&lt;/td>
+          &lt;/tr>
+          &lt;tr>
+            &lt;th>A1 / U1&lt;/th>
+            &lt;td>20 useful bits：b20~b39&lt;/td>
+            &lt;td>&lt;span class=&quot;byte hold&quot;>16b&lt;/span> 留著&lt;/td>
+            &lt;td>
+              &lt;span class=&quot;byte rgb-r&quot;>b0~7&lt;/span>
+              &lt;span class=&quot;byte rgb-g&quot;>b8~15&lt;/span>
+              &lt;span class=&quot;byte rgb-b&quot;>b16~23&lt;/span>
+            &lt;/td>
+            &lt;td>&lt;span class=&quot;byte valid&quot;>1&lt;/span>&lt;/td>
+          &lt;/tr>
+          &lt;tr>
+            &lt;th>A2 / U2&lt;/th>
+            &lt;td>20 useful bits：b40~b59&lt;/td>
+            &lt;td>&lt;span class=&quot;byte hold&quot;>12b&lt;/span> 留著&lt;/td>
+            &lt;td>
+              &lt;span class=&quot;byte rgb-r&quot;>b24~31&lt;/span>
+              &lt;span class=&quot;byte rgb-g&quot;>b32~39&lt;/span>
+              &lt;span class=&quot;byte rgb-b&quot;>b40~47&lt;/span>
+            &lt;/td>
+            &lt;td>&lt;span class=&quot;byte valid&quot;>1&lt;/span>&lt;/td>
+          &lt;/tr>
+          &lt;tr>
+            &lt;th>A3 / U3&lt;/th>
+            &lt;td>20 useful bits：b60~b79&lt;/td>
+            &lt;td>&lt;span class=&quot;byte hold&quot;>8b&lt;/span> 留著&lt;/td>
+            &lt;td>
+              &lt;span class=&quot;byte rgb-r&quot;>b48~55&lt;/span>
+              &lt;span class=&quot;byte rgb-g&quot;>b56~63&lt;/span>
+              &lt;span class=&quot;byte rgb-b&quot;>b64~71&lt;/span>
+            &lt;/td>
+            &lt;td>&lt;span class=&quot;byte valid&quot;>1&lt;/span>&lt;/td>
+          &lt;/tr>
+          &lt;tr>
+            &lt;th>A4 / U4&lt;/th>
+            &lt;td>20 useful bits：b80~b99&lt;/td>
+            &lt;td>&lt;span class=&quot;byte hold&quot;>4b&lt;/span> 留著&lt;/td>
+            &lt;td>
+              &lt;span class=&quot;byte rgb-r&quot;>b72~79&lt;/span>
+              &lt;span class=&quot;byte rgb-g&quot;>b80~87&lt;/span>
+              &lt;span class=&quot;byte rgb-b&quot;>b88~95&lt;/span>
+            &lt;/td>
+            &lt;td>&lt;span class=&quot;byte valid&quot;>1&lt;/span>&lt;/td>
+          &lt;/tr>
+          &lt;tr>
+            &lt;th>A5 / U5&lt;/th>
+            &lt;td>20 useful bits：b100~b119&lt;/td>
+            &lt;td>剛好用完，residue = 0&lt;/td>
+            &lt;td>
+              &lt;span class=&quot;byte rgb-r&quot;>b96~103&lt;/span>
+              &lt;span class=&quot;byte rgb-g&quot;>b104~111&lt;/span>
+              &lt;span class=&quot;byte rgb-b&quot;>b112~119&lt;/span>
+            &lt;/td>
+            &lt;td>&lt;span class=&quot;byte valid&quot;>1&lt;/span>&lt;/td>
+          &lt;/tr>
+          &lt;tr class=&quot;round-b&quot;>
+            &lt;th>B0 / U6&lt;/th>
+            &lt;td>20 useful bits：b120~b139&lt;/td>
+            &lt;td>&lt;span class=&quot;byte hold&quot;>20b&lt;/span>&lt;/td>
+            &lt;td>還不夠 24bit&lt;/td>
+            &lt;td>&lt;span class=&quot;byte&quot;>0&lt;/span>&lt;/td>
+          &lt;/tr>
+          &lt;tr class=&quot;round-b&quot;>
+            &lt;th>B1 / U7&lt;/th>
+            &lt;td>20 useful bits：b140~b159&lt;/td>
+            &lt;td>&lt;span class=&quot;byte hold&quot;>16b&lt;/span> 留著&lt;/td>
+            &lt;td>
+              &lt;span class=&quot;byte rgb-r&quot;>b120~127&lt;/span>
+              &lt;span class=&quot;byte rgb-g&quot;>b128~135&lt;/span>
+              &lt;span class=&quot;byte rgb-b&quot;>b136~143&lt;/span>
+            &lt;/td>
+            &lt;td>&lt;span class=&quot;byte valid&quot;>1&lt;/span>&lt;/td>
+          &lt;/tr>
+          &lt;tr class=&quot;round-b&quot;>
+            &lt;th>B2 / U8&lt;/th>
+            &lt;td>20 useful bits：b160~b179&lt;/td>
+            &lt;td>&lt;span class=&quot;byte hold&quot;>12b&lt;/span> 留著&lt;/td>
+            &lt;td>
+              &lt;span class=&quot;byte rgb-r&quot;>b144~151&lt;/span>
+              &lt;span class=&quot;byte rgb-g&quot;>b152~159&lt;/span>
+              &lt;span class=&quot;byte rgb-b&quot;>b160~167&lt;/span>
+            &lt;/td>
+            &lt;td>&lt;span class=&quot;byte valid&quot;>1&lt;/span>&lt;/td>
+          &lt;/tr>
+          &lt;tr class=&quot;round-b&quot;>
+            &lt;th>B3 / U9&lt;/th>
+            &lt;td>20 useful bits：b180~b199&lt;/td>
+            &lt;td>&lt;span class=&quot;byte hold&quot;>8b&lt;/span> 留著&lt;/td>
+            &lt;td>
+              &lt;span class=&quot;byte rgb-r&quot;>b168~175&lt;/span>
+              &lt;span class=&quot;byte rgb-g&quot;>b176~183&lt;/span>
+              &lt;span class=&quot;byte rgb-b&quot;>b184~191&lt;/span>
+            &lt;/td>
+            &lt;td>&lt;span class=&quot;byte valid&quot;>1&lt;/span>&lt;/td>
+          &lt;/tr>
+          &lt;tr class=&quot;round-b&quot;>
+            &lt;th>B4 / U10&lt;/th>
+            &lt;td>20 useful bits：b200~b219&lt;/td>
+            &lt;td>&lt;span class=&quot;byte hold&quot;>4b&lt;/span> 留著&lt;/td>
+            &lt;td>
+              &lt;span class=&quot;byte rgb-r&quot;>b192~199&lt;/span>
+              &lt;span class=&quot;byte rgb-g&quot;>b200~207&lt;/span>
+              &lt;span class=&quot;byte rgb-b&quot;>b208~215&lt;/span>
+            &lt;/td>
+            &lt;td>&lt;span class=&quot;byte valid&quot;>1&lt;/span>&lt;/td>
+          &lt;/tr>
+          &lt;tr class=&quot;round-b&quot;>
+            &lt;th>B5 / U11&lt;/th>
+            &lt;td>20 useful bits：b220~b239&lt;/td>
+            &lt;td>剛好用完，residue = 0&lt;/td>
+            &lt;td>
+              &lt;span class=&quot;byte rgb-r&quot;>b216~223&lt;/span>
+              &lt;span class=&quot;byte rgb-g&quot;>b224~231&lt;/span>
+              &lt;span class=&quot;byte rgb-b&quot;>b232~239&lt;/span>
+            &lt;/td>
+            &lt;td>&lt;span class=&quot;byte valid&quot;>1&lt;/span>&lt;/td>
+          &lt;/tr>
+        &lt;/tbody>
+      &lt;/table>
     &lt;/section>
 
     &lt;section class=&quot;note&quot;>
-      重點：一個 &lt;code>420b pack = 21&lt;/code> 個 raw clock。每個 pack 的第 1 拍含 7b header，所以只新增
-      &lt;code>13b&lt;/code> effective data；後面 20 拍各新增 &lt;code>20b&lt;/code>。RGB 端只是一個 effective-bit buffer：
-      只要 &lt;code>buffer_cnt &amp;gt;= 24&lt;/code> 就輸出 &lt;code>rgb_data[23:0]&lt;/code> 並拉高 &lt;code>rgb_valid&lt;/code>。
-      &lt;code>useful20&lt;/code> 只保留給 debug 觀察，不是主資料路徑。
+      重點：上方第一張表看 raw &lt;code>20bit CHPI[19:0]&lt;/code> 進來時，每個 &lt;code>420b pack = 21&lt;/code> 拍、
+      首拍扣 header 後只新增 &lt;code>13b&lt;/code> 的真實節奏。下方第二組表看 RTL 內部 debug 觀察點：
+      先 restore/re-align 成 &lt;code>useful20&lt;/code>，再用 &lt;code>20*6 = 24*5&lt;/code> 湊 RGB24。
+      兩個表是同一條資料流的不同觀察層級。
     &lt;/section>
   &lt;/main>
 &lt;/body>
