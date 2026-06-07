@@ -3,9 +3,9 @@ RTL Rule File for CHPI / DDIC Digital Helper Work
 
 Purpose
 -------
-This file records the RTL mistakes found during the CHPI 413b/420b decoder
-review. Before producing or revising RTL later, Codex should read this file
-first and apply the checklist below.
+This file records RTL mistakes found during the CHPI 413b/420b decoder review.
+Before producing or revising RTL later, Codex should read this file first and
+apply the checklist below.
 
 
 Core Rules
@@ -30,31 +30,70 @@ R002 - Do not mix blocking and non-blocking assignment in one clocked process.
     A posedge always block used blocking assignment for next-state variables
     and non-blocking assignment for flops in the same block.
   Required behavior:
-    Use a two-process style for non-trivial RTL:
-      - always @* or always_comb: combinational next-state only, use "=".
-      - always @(posedge clk or negedge rst_n): DFF update only, use "<=".
-  Naming convention:
-      *_q : registered current state
-      *_n : next state sampled by DFF
-      *_w : combinational work/intermediate value
+    Clock/reset always blocks describe registers and must use non-blocking
+    assignment for registered signals.
+  Verification requirement:
+    Search for "=" inside posedge/negedge state update blocks before delivery.
+    Temporary combinational signals must not be assigned inside the DFF update
+    block.
 
-R003 - Make the hardware structure readable.
+R003 - Match the team's readable RTL style; do not force q/n/w naming.
+  Mistake seen:
+    The first correction used a large next-state block with *_q, *_n, *_w
+    naming. It was functionally clearer than the original, but it did not
+    match this IC team's usual review style.
+  Required behavior:
+    Prefer meaningful signal names and split clock/reset always blocks by
+    function or signal group:
+      - raw input aligner
+      - packet/header counter
+      - label/restore state
+      - RGB24 packer
+      - RGB24 output
+  Verification requirement:
+    A reviewer should be able to draw the DFF groups directly from the always
+    blocks without decoding a global q/n/w naming scheme.
+
+R004 - Do not hide fixed datapath work inside a for-loop in final review RTL.
+  Mistake seen:
+    The area-lean parser used:
+      for (k = 0; k < 3; k = k + 1)
+    This is synthesizable when constant-bounded, but it reads like software and
+    made the hardware structure less obvious.
+  Required behavior:
+    For this CHPI decoder, write the parser as explicit stage0 / stage1 /
+    stage2 blocks. Each stage consumes at most one 7b group.
+  Verification requirement:
+    Final review RTL must not contain the parser loop or an unused k variable.
+
+R005 - Avoid latch risk in combinational logic.
+  Mistake seen:
+    Earlier combinational style had many nested if branches and was hard to
+    audit for complete assignment.
+  Required behavior:
+    Every combinational always block must assign all outputs at the top and
+    every if branch must have an explicit else when it changes outputs.
+  Verification requirement:
+    Inspect each always @* block for complete defaults and explicit else paths.
+    No combinational block may rely on an accidental retained value.
+
+R006 - Make the hardware structure readable.
   Mistake seen:
     Input aligner, header/label FSM, restore datapath, and RGB packer were
     mixed together without clear hardware boundaries.
   Required behavior:
     The code must show the hardware stages in comments and naming:
       - input aligner
-      - 7b parser
+      - explicit 7b parser stage0 / stage1 / stage2
       - header/label state
       - restore datapath
       - RGB24 packer
       - optional debug observation path, if any
-  Review standard:
+  Verification requirement:
     A digital engineer should be able to draw DFFs, muxes, counters, and
     datapath widths from the code without guessing.
 
-R004 - Area is not simply "fewer operations per clock".
+R007 - Area is not simply "fewer operations per clock".
   Mistake seen:
     A one-group-per-clock decoder was considered, but continuous 20b input has
     no backpressure. That would need a large backlog buffer and may increase
@@ -62,53 +101,58 @@ R004 - Area is not simply "fewer operations per clock".
   Required behavior:
     For fixed-rate input streams, preserve the required throughput first, then
     minimize buffers and remove non-production debug paths.
-  CHPI decoder conclusion:
-    Continuous CHPI[19:0] input needs 20/7 payload-group parsing rate on
-    average. To keep the raw buffer small, parse up to three 7b groups per
-    clock. A slower parser needs a large FIFO or input stall mechanism.
+  Verification requirement:
+    For CHPI[19:0], keep up with 20/7 groups per clock on average. The decoder
+    therefore needs to consume up to three 7b groups per clock.
 
-R005 - Avoid unnecessary debug datapath in production-intended RTL.
+R008 - Avoid unnecessary debug datapath in production-intended RTL.
   Mistake seen:
     useful20 debug output had its own FIFO/counter datapath, increasing state
     and logic even though RGB24 is the real output.
   Required behavior:
     If a debug output is required by the interface but not production behavior,
     tie it off or isolate it behind an explicit parameter.
-  CHPI area-lean decision:
-    useful20_valid = 1'b0 and useful20_data = 20'd0 in the area-lean RTL.
+  Verification requirement:
+    In the area-lean RTL, useful20_valid must be 1'b0 and useful20_data must be
+    20'd0 unless the user explicitly asks to restore that debug path.
 
-R006 - Keep buffer width justified by throughput and residue.
+R009 - Keep buffer width justified by throughput and residue.
   Mistake seen:
     Buffer size was not explained clearly enough.
   Required behavior:
     State why each buffer width exists.
   CHPI area-lean decoder:
-    raw_fifo_q  : 26 bits, because one clock appends 20b and parser drains up
-                  to three 7b groups; raw_cnt is bounded below 27.
-    rgb_fifo_q  : 30 bits, because packer can hold up to 23 old bits then add
-                  one 7b group before emitting RGB24.
-    raw_cnt_q   : 5 bits is enough for 0..26.
-    rgb_cnt_q   : 5 bits is enough for 0..30.
+    raw_shift     : 26 bits, because one clock appends 20b and parser drains
+                    up to three 7b groups; temporary raw count is at most 26.
+    rgb_shift     : 30 bits, because packer can hold up to 23 old bits then add
+                    one 7b group before emitting RGB24.
+    raw_bit_count : 5 bits is enough for 0..26.
+    rgb_bit_count : 5 bits is enough for 0..30.
 
-R007 - Output valid/data should have one clear generation path.
+R010 - Header/label must be explicit state, not hidden temporary behavior.
+  Mistake seen:
+    label_reg and replace_en were blocking-assigned inside the clocked parser.
+  Required behavior:
+    The first 7b group of each 420b packet updates active_label and
+    restore_enable. That header group must not enter the RGB data packer.
+  Verification requirement:
+    Packet counter reset point must be exact:
+      count 0   : header {H, Label}
+      count 7..413 : 59 payload groups
+      count 413 payload group returns next count to 0
+
+R011 - Output valid/data should have one clear generation path.
   Mistake seen:
     rgb_valid/rgb_data were assigned in several places inside the same clocked
     block.
   Required behavior:
-    Compute rgb_valid_n/rgb_data_n in combinational logic, then update the DFF
-    once in the sequential block.
-  If only one output word per clock is allowed:
-    Use an explicit emit flag such as rgb_emit_seen to avoid multiple writes to
-    the same output in one cycle.
+    Generate RGB output from one output always block. If the internal packer is
+    combinational, feed it with one clear pack_emit_valid / pack_emit_data
+    result.
+  Verification requirement:
+    rgb_valid and rgb_data should be registered in one clock/reset block.
 
-R008 - Header/label must be explicit state, not hidden temporary behavior.
-  Mistake seen:
-    label_reg and replace_en were blocking-assigned inside the clocked parser.
-  Required behavior:
-    Use label_q/label_n and replace_en_q/replace_en_n. The first 7b group of
-    each 420b packet updates header/label state and must not enter RGB data.
-
-R009 - Use exact bit order and width comments.
+R012 - Use exact bit order and width comments.
   Mistake seen:
     Some explanations were unclear about LSB-first order and bus packing.
   Required behavior:
@@ -119,7 +163,7 @@ R009 - Use exact bit order and width comments.
       - state packet/header widths
       - state residue/buffer strategy
 
-R010 - Simulation must be run before updating user-facing HTML/site.
+R013 - Simulation must be run before updating user-facing HTML/site.
   Mistake seen:
     Documentation was polished before the RTL quality was sufficiently checked.
   Required behavior:
@@ -141,11 +185,16 @@ Purpose:
   Synthesis-intended, area-lean CHPI 420b to 413b decoder demo for continuous
   CHPI[19:0] input and RGB24 output.
 
-Area-lean choices:
-  - Remove useful20 debug FIFO/counter datapath by tying debug output off.
-  - Keep continuous 20b throughput by parsing up to three 7b groups per clock.
-  - Use 26b raw buffer and 30b RGB buffer instead of large line/backlog buffer.
-  - Use two-process RTL style for readable combinational/DFF separation.
+Review-style choices in Ver.B:
+  - Removed the parser for-loop and wrote explicit stage0/stage1/stage2 blocks.
+  - Removed the *_q / *_n / *_w deliverable naming style.
+  - Split registers into multiple clock/reset always blocks by function:
+      raw aligner, packet counter, label state, RGB packer, RGB output.
+  - Kept combinational helper blocks small and fully assigned.
+  - Removed useful20 debug FIFO/counter datapath by tying debug output off.
+  - Preserved continuous 20b throughput by parsing up to three 7b groups per
+    clock.
+  - Kept 26b raw buffer and 30b RGB buffer instead of a large line/backlog FIFO.
 
 Simulation:
   Tool:
@@ -170,7 +219,10 @@ Pre-Delivery Checklist
 
 [ ] Did I label the RTL maturity level correctly?
 [ ] Did I avoid blocking assignment inside DFF update logic?
-[ ] Are all DFFs visible in a clean sequential block?
+[ ] Did I split registers by readable function/signal group?
+[ ] Did I avoid forcing q/n/w naming if the team's style does not use it?
+[ ] Did I avoid constant parser for-loops in final review RTL?
+[ ] Are all combinational outputs fully assigned with explicit else paths?
 [ ] Are hardware stages named and commented?
 [ ] Are buffer widths justified?
 [ ] Did I avoid debug logic unless explicitly needed?
@@ -190,5 +242,20 @@ Revise History
     non-blocking assignment inside one clocked block, did not communicate
     hardware structure clearly, and was not area-focused enough.
   Action:
-    Added R001-R010, area-lean CHPI decoder guidance, simulation requirement,
-    and pre-delivery checklist.
+    Added first review rules, area-lean CHPI decoder guidance, simulation
+    requirement, and pre-delivery checklist.
+
+2026-06-07 Rev B
+  Company-style readability update after senior review feedback.
+  Root cause:
+    The Rev A correction still looked too much like a global next-state style.
+    The constant-bounded parser for-loop was synthesizable, but it did not make
+    the intended hardware obvious enough for this team.
+  Action:
+    Updated R002-R005 and current RTL guidance:
+      - no blocking/non-blocking mixing in DFF blocks
+      - no mandatory q/n/w naming
+      - split clock/reset blocks by function
+      - replace parser for-loop with explicit stage0/stage1/stage2
+      - require complete combinational defaults and explicit else branches
+    Re-ran Icarus line simulation and confirmed PASS.
