@@ -15,6 +15,7 @@
       --code: #05070b;
       --code-ink: #fbfdff;
       --code-comment: #ffe45c;
+      --rule-blue: #5fb4ff;
       --bad: #b42318;
       --bad-soft: #fde8e7;
       --good: #14783d;
@@ -257,6 +258,14 @@
     .code-comment {
       color: var(--code-comment);
       font-weight: 800;
+    }
+    .rule-title {
+      color: var(--rule-blue);
+      font-weight: 900;
+    }
+    .rule-subtitle {
+      color: var(--code-comment);
+      font-weight: 900;
     }
     .area-grid {
       display: grid;
@@ -877,25 +886,25 @@ first and apply the checklist below.
 Core Rules
 ----------
 
-R001 - Do not present simulation-only RTL as production RTL.
-  Mistake seen:
+<span class="rule-title">R001 - Do not present simulation-only RTL as production RTL.</span>
+  <span class="rule-subtitle">Mistake seen:</span>
     Icarus PASS was described too close to "deliverable RTL".
-  Required behavior:
+  <span class="rule-subtitle">Required behavior:</span>
     Every RTL output must be labeled as one of:
       - concept / trace code
       - simulation demo RTL
       - synthesis-intended RTL
       - production candidate RTL
-  Verification requirement:
+  <span class="rule-subtitle">Verification requirement:</span>
     If claiming synthesis-intended RTL, at minimum run syntax simulation and
     explicitly state that company lint/synthesis/timing sign-off is still
     required unless those tools were actually run.
 
-R002 - Do not mix blocking and non-blocking assignment in one clocked process.
-  Mistake seen:
+<span class="rule-title">R002 - Do not mix blocking and non-blocking assignment in one clocked process.</span>
+  <span class="rule-subtitle">Mistake seen:</span>
     A posedge always block used blocking assignment for next-state variables
     and non-blocking assignment for flops in the same block.
-  Required behavior:
+  <span class="rule-subtitle">Required behavior:</span>
     Use a two-process style for non-trivial RTL:
       - always @* or always_comb: combinational next-state only, use "=".
       - always @(posedge clk or negedge rst_n): DFF update only, use "&lt;=".
@@ -904,11 +913,11 @@ R002 - Do not mix blocking and non-blocking assignment in one clocked process.
       *_n : next state sampled by DFF
       *_w : combinational work/intermediate value
 
-R003 - Make the hardware structure readable.
-  Mistake seen:
+<span class="rule-title">R003 - Make the hardware structure readable.</span>
+  <span class="rule-subtitle">Mistake seen:</span>
     Input aligner, header/label FSM, restore datapath, and RGB packer were
     mixed together without clear hardware boundaries.
-  Required behavior:
+  <span class="rule-subtitle">Required behavior:</span>
     The code must show the hardware stages in comments and naming:
       - input aligner
       - 7b parser
@@ -920,12 +929,12 @@ R003 - Make the hardware structure readable.
     A digital engineer should be able to draw DFFs, muxes, counters, and
     datapath widths from the code without guessing.
 
-R004 - Area is not simply "fewer operations per clock".
-  Mistake seen:
+<span class="rule-title">R004 - Area is not simply "fewer operations per clock".</span>
+  <span class="rule-subtitle">Mistake seen:</span>
     A one-group-per-clock decoder was considered, but continuous 20b input has
     no backpressure. That would need a large backlog buffer and may increase
     area.
-  Required behavior:
+  <span class="rule-subtitle">Required behavior:</span>
     For fixed-rate input streams, preserve the required throughput first, then
     minimize buffers and remove non-production debug paths.
   CHPI decoder conclusion:
@@ -933,20 +942,20 @@ R004 - Area is not simply "fewer operations per clock".
     average. To keep the raw buffer small, parse up to three 7b groups per
     clock. A slower parser needs a large FIFO or input stall mechanism.
 
-R005 - Avoid unnecessary debug datapath in production-intended RTL.
-  Mistake seen:
+<span class="rule-title">R005 - Avoid unnecessary debug datapath in production-intended RTL.</span>
+  <span class="rule-subtitle">Mistake seen:</span>
     useful20 debug output had its own FIFO/counter datapath, increasing state
     and logic even though RGB24 is the real output.
-  Required behavior:
+  <span class="rule-subtitle">Required behavior:</span>
     If a debug output is required by the interface but not production behavior,
     tie it off or isolate it behind an explicit parameter.
   CHPI area-lean decision:
     useful20_valid = 1'b0 and useful20_data = 20'd0 in the area-lean RTL.
 
-R006 - Keep buffer width justified by throughput and residue.
-  Mistake seen:
+<span class="rule-title">R006 - Keep buffer width justified by throughput and residue.</span>
+  <span class="rule-subtitle">Mistake seen:</span>
     Buffer size was not explained clearly enough.
-  Required behavior:
+  <span class="rule-subtitle">Required behavior:</span>
     State why each buffer width exists.
   CHPI area-lean decoder:
     raw_fifo_q  : 26 bits, because one clock appends 20b and parser drains up
@@ -956,28 +965,28 @@ R006 - Keep buffer width justified by throughput and residue.
     raw_cnt_q   : 5 bits is enough for 0..26.
     rgb_cnt_q   : 5 bits is enough for 0..30.
 
-R007 - Output valid/data should have one clear generation path.
-  Mistake seen:
+<span class="rule-title">R007 - Output valid/data should have one clear generation path.</span>
+  <span class="rule-subtitle">Mistake seen:</span>
     rgb_valid/rgb_data were assigned in several places inside the same clocked
     block.
-  Required behavior:
+  <span class="rule-subtitle">Required behavior:</span>
     Compute rgb_valid_n/rgb_data_n in combinational logic, then update the DFF
     once in the sequential block.
   If only one output word per clock is allowed:
     Use an explicit emit flag such as rgb_emit_seen to avoid multiple writes to
     the same output in one cycle.
 
-R008 - Header/label must be explicit state, not hidden temporary behavior.
-  Mistake seen:
+<span class="rule-title">R008 - Header/label must be explicit state, not hidden temporary behavior.</span>
+  <span class="rule-subtitle">Mistake seen:</span>
     label_reg and replace_en were blocking-assigned inside the clocked parser.
-  Required behavior:
+  <span class="rule-subtitle">Required behavior:</span>
     Use label_q/label_n and replace_en_q/replace_en_n. The first 7b group of
     each 420b packet updates header/label state and must not enter RGB data.
 
-R009 - Use exact bit order and width comments.
-  Mistake seen:
+<span class="rule-title">R009 - Use exact bit order and width comments.</span>
+  <span class="rule-subtitle">Mistake seen:</span>
     Some explanations were unclear about LSB-first order and bus packing.
-  Required behavior:
+  <span class="rule-subtitle">Required behavior:</span>
     For every encoder/decoder RTL:
       - state whether input is LSB-first or MSB-first
       - state input bus width
@@ -985,10 +994,10 @@ R009 - Use exact bit order and width comments.
       - state packet/header widths
       - state residue/buffer strategy
 
-R010 - Simulation must be run before updating user-facing HTML/site.
-  Mistake seen:
+<span class="rule-title">R010 - Simulation must be run before updating user-facing HTML/site.</span>
+  <span class="rule-subtitle">Mistake seen:</span>
     Documentation was polished before the RTL quality was sufficiently checked.
-  Required behavior:
+  <span class="rule-subtitle">Required behavior:</span>
     For any HTML page that presents RTL as corrected, run the relevant testbench
     first and show:
       - simulator name
@@ -1057,8 +1066,7 @@ Revise History
     hardware structure clearly, and was not area-focused enough.
   Action:
     Added R001-R010, area-lean CHPI decoder guidance, simulation requirement,
-    and pre-delivery checklist.
-</code></pre>
+    and pre-delivery checklist.</code></pre>
     </section>
   </main>
 </body>
