@@ -316,17 +316,82 @@
     }
     @media (max-width: 1080px) {
       main { padding: 10px; }
-      header, .cards, .deep-grid, .flow, .fix-head, .fix-row, .area-grid, .sim-grid {
+      .desktop header {
         grid-template-columns: 1fr;
       }
-      .desktop .flow-step:not(:last-child)::after {
-        content: "↓";
-        position: static;
-        display: block;
-        transform: none;
-        margin-top: 6px;
-        text-align: center;
+      .desktop .cards {
+        grid-template-columns: repeat(3, minmax(180px, 1fr));
+        min-width: 640px;
       }
+      .desktop .deep-grid {
+        grid-template-columns: repeat(4, minmax(180px, 1fr));
+        min-width: 760px;
+      }
+      .desktop .flow {
+        grid-template-columns: repeat(7, minmax(145px, 1fr));
+        min-width: 1060px;
+      }
+      .desktop .fix-head,
+      .desktop .fix-row {
+        grid-template-columns: minmax(300px, 1fr) minmax(300px, 1fr) minmax(270px, 0.78fr);
+        min-width: 940px;
+      }
+      .desktop .area-grid {
+        grid-template-columns: repeat(4, minmax(180px, 1fr));
+        min-width: 760px;
+      }
+      .desktop .sim-grid {
+        grid-template-columns: minmax(300px, 0.8fr) minmax(420px, 1.2fr);
+        min-width: 820px;
+      }
+    }
+    .mobile main {
+      max-width: none;
+      min-width: 1040px;
+    }
+    .mobile header {
+      grid-template-columns: minmax(320px, 0.82fr) minmax(650px, 1.18fr);
+    }
+    .mobile .cards {
+      grid-template-columns: repeat(3, minmax(200px, 1fr));
+    }
+    .mobile .deep-grid {
+      grid-template-columns: repeat(4, minmax(210px, 1fr));
+    }
+    .mobile .flow {
+      grid-template-columns: repeat(7, minmax(150px, 1fr));
+      min-width: 1120px;
+    }
+    .mobile .flow-step {
+      min-height: 126px;
+    }
+    .mobile .flow-step:not(:last-child)::after {
+      content: ">";
+      position: absolute;
+      right: -9px;
+      top: 50%;
+      display: block;
+      margin-top: 0;
+      transform: translateY(-50%);
+      color: var(--circuit);
+      font-weight: 900;
+      text-align: left;
+      z-index: 3;
+    }
+    .mobile .fix-head,
+    .mobile .fix-row {
+      grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr) minmax(280px, 0.76fr);
+      min-width: 980px;
+    }
+    .mobile .fix-code pre {
+      min-height: 150px;
+      max-height: 245px;
+    }
+    .mobile .area-grid {
+      grid-template-columns: repeat(4, minmax(210px, 1fr));
+    }
+    .mobile .sim-grid {
+      grid-template-columns: minmax(330px, 0.8fr) minmax(500px, 1.2fr);
     }
   </style>
 </head>
