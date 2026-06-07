@@ -122,7 +122,7 @@ R009 - Keep buffer width justified by throughput and residue.
   Required behavior:
     State why each registered buffer and each temporary combinational bus
     exists.
-  CHPI Ver.C area-lean decoder:
+  Earlier area-lean decoder lesson:
     raw_residue       : 6 registered bits, because after parsing up to three
                         7b groups the CHPI raw residue is only 0..6 bits.
     raw_bit_count     : 3 registered bits is enough for 0..6.
@@ -210,45 +210,107 @@ R015 - Avoid generic variable shifters in small datapath glue.
     Constant shifts are acceptable. Variable shifts in the main datapath need
     an explicit area reason.
 
+R016 - Do not put K-code alignment responsibility inside this decoder.
+  Mistake seen:
+    A robust-start decoder version was described too close to "auto align".
+    That was misleading. It can only wait for start/valid; it cannot find K,
+    bit-slip, or packet phase by itself.
+  Required behavior:
+    Keep system partition explicit:
+      CDR/S2P -> K-code detect/bit-slip/20b word align -> packet bit0 align
+      -> CHPI 420b/413b long-code decoder -> RGB24 packer.
+    The area-min O/min RTL assumes the upstream aligner releases this decoder
+    with packet bit0 on the first active clock.
+  Verification requirement:
+    Any document or RTL comment must say whether packet start is already
+    aligned. Do not claim "auto alignment" unless K detect and bit-slip logic
+    are really implemented and tested.
+
+R017 - For metal-limited small-height layout, optimize mux/routing first.
+  Mistake seen:
+    Some readable versions were functionally correct but still carried wide
+    bit packers or extra state. That hurts a 3-metal, small-height layout
+    because routing congestion can dominate.
+  Required behavior:
+    Prefer narrow residue state and byte-lane packing:
+      - raw_residue[5:0]
+      - subphase[2:0] + packet_phase[1:0]
+      - byte_residue[6:0] and byte_bit_count[2:0]
+      - rgb_byte_buf[15:0] and rgb_byte_count[1:0]
+    Avoid restoring a 44b variable-shift packer unless timing/pipeline tradeoff
+    proves it is better in the real library.
+  Verification requirement:
+    Compare versions by at least:
+      - registered bits
+      - generic mux/shift structure
+      - estimated generic CMOS area
+      - simulation PASS scope
+      - stated alignment assumption
+
 
 Current Verified RTL
 --------------------
 
 File:
-  chpi_long_decoder_rgb24_area_lean_verc.v
+  chpi_long_decoder_rgb24_area_min.v
 
 Purpose:
-  Synthesis-intended, area-lean CHPI 420b to 413b decoder demo for continuous
-  CHPI[19:0] input and RGB24 output.
+  Production candidate, area-min CHPI 420b to 413b long-code decoder for
+  continuous CHPI[19:0] input and RGB24 output.
 
-Review-style choices in Ver.C:
-  - Removed the parser for-loop and wrote explicit stage0/stage1/stage2 blocks.
-  - Removed the *_q / *_n / *_w deliverable naming style.
-  - Split registers into multiple clock/reset always blocks by function:
-      raw residue, packet group counter, label state, RGB residue, RGB output.
+Required system assumption:
+  - Upstream K-code/bit-slip/word aligner has already aligned packet bit0.
+  - The first active clock after release/reset is the first 20b word of a 420b
+    packet.
+  - No valid_i bubble is inserted inside the continuous stream.
+  - This decoder does not perform K-code search or bit-slip.
+
+Review-style choices in Ver.O/min:
+  - Kept the team's readable split clock/reset always style by function:
+      raw residue, phase counter, label state, byte/RGB packer, RGB output.
   - Kept combinational helper blocks small and fully assigned.
   - Removed useful20 debug FIFO/counter datapath by tying debug output off.
-  - Preserved continuous 20b throughput by parsing up to three 7b groups per
-    clock.
-  - Reduced real registered state:
-      raw aligner DFF   : 26b -> 6b raw_residue
-      raw count DFF     : 5b  -> 3b raw_bit_count
-      packet counter DFF: 9b  -> 6b packet_group_count
-      RGB packer DFF    : 30b -> 23b rgb_residue
-  - Replaced generic variable input/RGB insertion shifts with case-based muxes.
-  - Kept 26b raw aligner and 30b RGB packer only as combinational temporaries.
+  - Preserved continuous 20b throughput by using fixed 20b-to-7b subphase
+    placement.
+  - Replaced the earlier 44b bit-level packer with:
+      7b-to-byte residue packer + RGB24 byte-lane packer
+  - Replaced the 5b 0..20 word counter with:
+      packet_phase[1:0] + subphase[2:0]
+  - Yosys generic CMOS estimate:
+      B baseline  : 7534+
+      I robust    : 5038+
+      M byte pack : 4538+
+      O/min       : 4406+
 
 Simulation:
   Tool:
     Icarus Verilog
-  Command:
-    iverilog -g2012 -Wall -o chpi_area_lean_verc_line_tb.out
-      chpi_long_decoder_rgb24_line_tb.v
-      chpi_long_decoder_rgb24_area_lean_verc.v
-    vvp chpi_area_lean_verc_line_tb.out
+  Commands:
+    iverilog -g2012 -Wall -o chpi_area_min_00_01_aligned_tb.out
+      chpi_long_decoder_rgb24_tb_00_01_aligned.v
+      chpi_long_decoder_rgb24_area_min.v
+    vvp chpi_area_min_00_01_aligned_tb.out
+
+    iverilog -g2012 -Wall -o chpi_area_min_aligned_tb.out
+      chpi_long_decoder_rgb24_tb_aligned.v
+      chpi_long_decoder_rgb24_area_min.v
+    vvp chpi_area_min_aligned_tb.out
+
+    iverilog -g2012 -Wall -o chpi_area_min_pattern_aligned_tb.out
+      chpi_long_decoder_rgb24_pattern_tb_aligned.v
+      chpi_long_decoder_rgb24_area_min.v
+    vvp chpi_area_min_pattern_aligned_tb.out
+
+    iverilog -g2012 -Wall -o chpi_area_min_line_aligned_tb.out
+      chpi_long_decoder_rgb24_line_tb_aligned.v
+      chpi_long_decoder_rgb24_area_min.v
+    vvp chpi_area_min_line_aligned_tb.out
   Result:
+    PASS: bytes 00 and 01 observed
+    PASS: first 256 bytes matched 00..FF
+    PASS: all pattern regressions matched
     PASS: complete line matched: 5 CTRL_L bytes + 960 RGB bytes
-    Output RGB24 words=326, checked bytes=978
+    Output RGB24 words=322, checked bytes=965
 
 Limitations:
   - Icarus PASS is not company synthesis sign-off.
@@ -270,6 +332,8 @@ Pre-Delivery Checklist
 [ ] Did I avoid debug logic unless explicitly needed?
 [ ] Did I minimize real registered width before optimizing comments/style?
 [ ] Did I avoid generic variable shifters in small placement logic?
+[ ] Did I state whether K/packet alignment is upstream or inside this RTL?
+[ ] Did I check the area/speed/routing indicators before changing style?
 [ ] Did I verify throughput and backlog behavior?
 [ ] Did I run the relevant testbench?
 [ ] Did I paste the exact PASS log into the review document?
@@ -317,4 +381,28 @@ Revise History
       - use 6b packet_group_count instead of 9b packet_bit_count
       - replace variable input/RGB insertion shifts with case-based placement
       - keep 3 explicit parser stages to preserve continuous 20b throughput
-    Re-ran Icarus line simulation on Ver.C and confirmed PASS.
+    Re-ran Icarus line simulation on Ver.C and confirmed PASS. This is kept
+    as history; current recommended RTL is O/min in Rev D.
+
+2026-06-08 02:22:37 +08:00 Rev D
+  O/min production-candidate update after comparing B/C/D/E/F/G/H/I/J/K/L/M/N/O.
+  Root cause:
+    Running many versions showed that correctness, readability, area, and
+    alignment assumptions must be judged together. The previous Ver.C guidance
+    was readable, but not the smallest area direction. It also did not state
+    the upstream K-code/packet alignment boundary strongly enough.
+  Action:
+    Added R016-R017 and updated current RTL guidance:
+      - O/min is the recommended production candidate when upstream K-code and
+        packet bit0 alignment are guaranteed
+      - no claim of decoder auto-align unless K detect/bit-slip exists
+      - use byte-packer architecture to avoid the 44b variable-shift packer
+      - use packet_phase + subphase instead of a wider word counter
+      - keep useful20 debug output tied off for area
+      - compare area using the same generic Yosys flow before recommending
+    Verification:
+      - Icarus -Wall PASS for 00/01 aligned test
+      - Icarus -Wall PASS for 00..FF aligned test
+      - Icarus -Wall PASS for 00/FF/F0/05/01/random pattern aligned test
+      - Icarus -Wall PASS for 5B CTRL_L + 960B RGB line aligned test
+      - Yosys generic CMOS O/min estimate: 4406+
