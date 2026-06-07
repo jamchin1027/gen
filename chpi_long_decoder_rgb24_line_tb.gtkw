@@ -1,0 +1,37 @@
+[*]
+[*] GTKWave Analyzer v3.3.100
+[*]
+[dumpfile] "chpi_long_decoder_rgb24_line_tb.vcd"
+[timestart] 0
+[size] 1500 900
+[pos] -1 -1
+*-10.000000 0 4200000 0
+[treeopen] chpi_long_decoder_rgb24_line_tb.
+[treeopen] chpi_long_decoder_rgb24_line_tb.dut.
+[treeopen] chpi_long_decoder_rgb24_line_tb.dut.u_dec.
+@28
+chpi_long_decoder_rgb24_line_tb.clk
+chpi_long_decoder_rgb24_line_tb.rst_n
+chpi_long_decoder_rgb24_line_tb.valid_i
+@22
+chpi_long_decoder_rgb24_line_tb.chpi_in[19:0]
+@28
+chpi_long_decoder_rgb24_line_tb.rgb_valid
+@22
+chpi_long_decoder_rgb24_line_tb.rgb_data[23:0]
+@28
+chpi_long_decoder_rgb24_line_tb.useful20_valid
+@22
+chpi_long_decoder_rgb24_line_tb.useful20_data[19:0]
+@28
+chpi_long_decoder_rgb24_line_tb.dut.u_dec.bit_cnt_420[8:0]
+chpi_long_decoder_rgb24_line_tb.dut.u_dec.raw_cnt[5:0]
+chpi_long_decoder_rgb24_line_tb.dut.u_dec.rgb_cnt[5:0]
+@22
+chpi_long_decoder_rgb24_line_tb.dut.u_dec.rgb_fifo[31:0]
+@28
+chpi_long_decoder_rgb24_line_tb.expected_byte_idx[31:0]
+chpi_long_decoder_rgb24_line_tb.ctrl_ok_count[31:0]
+chpi_long_decoder_rgb24_line_tb.rgb_ok_count[31:0]
+chpi_long_decoder_rgb24_line_tb.rgb_count[31:0]
+chpi_long_decoder_rgb24_line_tb.mismatch_count[31:0]

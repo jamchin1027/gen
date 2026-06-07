@@ -210,6 +210,76 @@
       background: #fff;
     }
 
+    .files-panel {
+      height: calc(100vh - 150px);
+      overflow: auto;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    .files-panel h2 {
+      margin: 0 0 6px;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+
+    .files-panel .file-subtitle {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .download-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .download-card {
+      display: grid;
+      gap: 6px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+      color: var(--ink);
+      text-decoration: none;
+    }
+
+    .download-card strong {
+      display: block;
+      font-size: 14px;
+    }
+
+    .download-card span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .download-card code {
+      color: var(--blue);
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 11px;
+      word-break: break-all;
+    }
+
+    .pass-log {
+      margin: 0;
+      padding: 12px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #10151f;
+      color: #e7edf7;
+      font: 11px/1.55 Consolas, "Courier New", monospace;
+      white-space: pre-wrap;
+    }
+
     .visual,
     .formula-box,
     .table-wrap {
@@ -661,6 +731,7 @@
         <button class="page-tab" type="button" data-page="real">real case</button>
         <button class="page-tab" type="button" data-page="logic">decode電路邏輯&verilog</button>
         <button class="page-tab" type="button" data-page="rgb">20b/420b → RGB24</button>
+        <button class="page-tab" type="button" data-page="sim">Simulation/files download</button>
       </nav>
       <div class="status" id="status">
         <span class="status-dot" id="statusDot"></span>
@@ -4462,6 +4533,52 @@ endmodule
 &lt;/body>
 &lt;/html>
 "></iframe>
+    </section>
+
+    <section class="page-view" data-view="sim" hidden>
+      <div class="files-panel">
+        <h2>Simulation/files download</h2>
+        <p class="file-subtitle">Icarus Verilog one-line decode test: 5 byte CTRL_L + 960 byte RGB, exported for local GTKWave review.</p>
+        <div class="download-grid">
+          <a class="download-card" href="chpi_long_decoder_rgb24.v" download>
+            <strong>decoder verilog</strong>
+            <span>CHPI[19:0] streaming decoder RTL</span>
+            <code>chpi_long_decoder_rgb24.v</code>
+          </a>
+          <a class="download-card" href="chpi_long_decoder_rgb24_line_tb.v" download>
+            <strong>line testbench</strong>
+            <span>5B CTRL_L + 960B RGB full-line simulation</span>
+            <code>chpi_long_decoder_rgb24_line_tb.v</code>
+          </a>
+          <a class="download-card" href="chpi_long_decoder_rgb24_line_tb.vcd" download>
+            <strong>VCD waveform</strong>
+            <span>Open locally with GTKWave</span>
+            <code>chpi_long_decoder_rgb24_line_tb.vcd</code>
+          </a>
+          <a class="download-card" href="chpi_long_decoder_rgb24_line_tb.gtkw" download>
+            <strong>GTKWave save file</strong>
+            <span>Signal list and viewing window</span>
+            <code>chpi_long_decoder_rgb24_line_tb.gtkw</code>
+          </a>
+          <a class="download-card" href="chpi_long_decoder_rgb24_line_tb.log" download>
+            <strong>Icarus PASS log</strong>
+            <span>Simulation output summary</span>
+            <code>chpi_long_decoder_rgb24_line_tb.log</code>
+          </a>
+        </div>
+        <pre class="pass-log">One-line test: CTRL_L=5 bytes, RGB=960 bytes, total=965 bytes
+Line bits=7720, CHPI blocks=19, encoded bits=7980, raw 20b clocks=399
+Decoder can emit 326 RGB24 words = 978 bytes; padding bytes checked as zero
+CTRL PASS byte[0] = c1
+CTRL PASS byte[1] = 7e
+CTRL PASS byte[2] = 55
+CTRL PASS byte[3] = aa
+CTRL PASS byte[4] = 5a
+RGB PASS byte[0] = 00
+RGB PASS byte[959] = bf
+PASS: complete line matched: 5 CTRL_L bytes + 960 RGB bytes
+Output RGB24 words=326, checked bytes=978</pre>
+      </div>
     </section>
   </main>
 
