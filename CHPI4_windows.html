@@ -525,7 +525,7 @@
         <button class="page-tab" type="button" data-page="flow">流程說明</button>
         <button class="page-tab" type="button" data-page="real">real case</button>
         <button class="page-tab" type="button" data-page="logic">decode電路邏輯&verilog</button>
-        <button class="page-tab" type="button" data-page="rgb">20bit CHPI 高效資料流 → 24bit RGB</button>
+        <button class="page-tab" type="button" data-page="rgb">420b pack解碼 → RGB24</button>
       </nav>
       <div class="status" id="status">
         <span class="status-dot" id="statusDot"></span>
@@ -3727,12 +3727,12 @@ endmodule
     </section>
 
     <section class="page-view" data-view="rgb" hidden>
-      <iframe class="embedded-frame" title="20bit CHPI 高效資料流 → 24bit RGB" srcdoc="&lt;!doctype html>
+      <iframe class="embedded-frame" title="420b pack解碼 → RGB24" srcdoc="&lt;!doctype html>
 &lt;html lang=&quot;zh-Hant&quot;>
 &lt;head>
   &lt;meta charset=&quot;utf-8&quot;>
   &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
-  &lt;title>CHPI 20bit to RGB24 Comic&lt;/title>
+  &lt;title>CHPI 420b pack to RGB24&lt;/title>
   &lt;style>
     :root {
       color-scheme: light;
@@ -3998,7 +3998,7 @@ endmodule
   &lt;main>
     &lt;header>
       &lt;div>
-        &lt;h1>20bit CHPI 高效資料流 → 24bit RGB&lt;/h1>
+        &lt;h1>420b pack解碼 → 24bit RGB&lt;/h1>
         &lt;div class=&quot;subtitle&quot;>同一個 P2P recovered clock，不做 CDC；420b 是一個 pack，每拍輸入 20b，每個 pack 第 1 拍扣 7b header，只新增 13b effective data，buffer 滿 24b 就吐 RGB。&lt;/div>
       &lt;/div>
       &lt;div class=&quot;badge&quot;>Input：CHPI[19:0] / clk　Output：RGB[23:0] + valid&lt;/div>
