@@ -718,7 +718,7 @@
         </div>
 
         <section class="formula-box" id="formulaBox">
-          <div class="formula-title">Synthesizable small-area RTL trace：20bit bus streaming decode</div>
+          <div class="formula-title">RTL trace 摘要：動畫逐行示意，正式可跑 RTL 請看 Simulation/files download</div>
           <div class="formula-line" data-step="0">
             <code>module chpi_420b413b_rgb24_dec (</code>
             <span class="value"></span>
@@ -740,7 +740,7 @@
             <span class="value" id="traceReplace">1'b1</span>
           </div>
           <div class="formula-line" data-step="5">
-            <code>if (rgb_cnt_next &gt;= 6\x27d24) emit one RGB24;</code>
+            <code>if (rgb_cnt_next &gt;= 6'd24) emit one RGB24;</code>
             <span class="value" id="traceLabel">6'b000001</span>
           </div>
           <div class="formula-line" data-step="6">
@@ -748,7 +748,7 @@
             <span class="value" id="traceH">1'b1</span>
           </div>
           <div class="formula-line" data-step="7">
-            <code>if (valid_i) raw_cnt_next = raw_cnt + 6\x27d20;</code>
+            <code>if (valid_i) raw_cnt_next = raw_cnt + 6'd20;</code>
             <span class="value" id="traceHeader">7'b1000001</span>
           </div>
           <div class="formula-line" data-step="8">
@@ -756,7 +756,7 @@
             <span class="value" id="traceZero">7'b0000010</span>
           </div>
           <div class="formula-line" data-step="9">
-            <code>for (k=0; k&lt;3; k=k+1) if (raw_cnt_next &gt;= 6\x27d7) begin</code>
+            <code>for (k=0; k&lt;3; k=k+1) if (raw_cnt_next &gt;= 6'd7) begin</code>
             <span class="value" id="traceOne">7'b0000011</span>
           </div>
           <div class="formula-line" data-step="10">
@@ -796,19 +796,19 @@
             <span class="value"></span>
           </div>
           <div class="formula-line" data-step="19">
-            <code>    rgb_cnt_next = rgb_cnt_next + 6\x27d7;</code>
+            <code>    rgb_cnt_next = rgb_cnt_next + 6'd7;</code>
             <span class="value"></span>
           </div>
           <div class="formula-line" data-step="20">
-            <code>  if (rgb_cnt_next &gt;= 6\x27d24) begin</code>
+            <code>  if (rgb_cnt_next &gt;= 6'd24) begin</code>
             <span class="value"></span>
           </div>
           <div class="formula-line" data-step="21">
-            <code>    rgb_data &lt;= rgb_fifo_next[23:0]; rgb_valid &lt;= 1\x27b1;</code>
+            <code>    rgb_data &lt;= rgb_fifo_next[23:0]; rgb_valid &lt;= 1'b1;</code>
             <span class="value"></span>
           </div>
           <div class="formula-line" data-step="22">
-            <code>    rgb_fifo_next = rgb_fifo_next &gt;&gt; 24; rgb_cnt_next = rgb_cnt_next - 6\x27d24;</code>
+            <code>    rgb_fifo_next = rgb_fifo_next &gt;&gt; 24; rgb_cnt_next = rgb_cnt_next - 6'd24;</code>
             <span class="value"></span>
           </div>
           <div class="formula-line" data-step="23">
@@ -816,7 +816,7 @@
             <span class="value"></span>
           </div>
           <div class="formula-line" data-step="24">
-            <code>  raw_fifo_next = raw_fifo_next &gt;&gt; 7; raw_cnt_next = raw_cnt_next - 6\x27d7;</code>
+            <code>  raw_fifo_next = raw_fifo_next &gt;&gt; 7; raw_cnt_next = raw_cnt_next - 6'd7;</code>
             <span class="value"></span>
           </div>
           <div class="formula-line" data-step="25">
@@ -4751,7 +4751,7 @@ Output RGB24 words=326, checked bytes=978</pre>
       traceZero.innerHTML = current.sampleGroupOut.slice(0, 6) === current.label
         ? `counter += 7`
         : "counter += 7";
-      traceOne.innerHTML = `rgb_data = 24\x27b${bitSpans(current.payload.slice(0, 20), previous.payload.slice(0, 20))}`;
+      traceOne.innerHTML = `rgb_data = 24'b${bitSpans(current.payload.slice(0, 20), previous.payload.slice(0, 20))}`;
       traceDout.innerHTML = `rgb_cnt >= 24 -> rgb_valid`;
 
       for (const line of formulaLines) {
