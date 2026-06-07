@@ -207,10 +207,12 @@
       tab-size: 2;
     }
     .fix-code pre {
-      min-height: 118px;
-      max-height: 205px;
+      min-height: 0;
+      max-height: none;
+      overflow: visible;
       padding: 6px 9px;
       border: 1px solid #202938;
+      white-space: pre-wrap;
     }
     .fix-code.before pre { box-shadow: inset 4px 0 0 var(--bad); }
     .fix-code.after pre { box-shadow: inset 4px 0 0 var(--good); }
