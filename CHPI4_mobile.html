@@ -1,0 +1,4726 @@
+﻿<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CHPI 420B/413B Mobile Checker</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f6f8;
+      --ink: #16181d;
+      --muted: #69707d;
+      --line: #d8dde6;
+      --panel: #ffffff;
+      --blue: #2457d6;
+      --green: #137a3a;
+      --green-soft: #e7f6ec;
+      --red: #b42318;
+      --red-soft: #fde8e7;
+      --amber: #9a5b00;
+      --amber-soft: #fff3d8;
+      --bit0: #eef1f6;
+      --bit1: #1c6b4f;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Segoe UI", Arial, "Microsoft JhengHei", sans-serif;
+    }
+
+    main {
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 12px;
+      height: 100vh;
+      padding: 16px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(360px, auto) 1fr auto;
+      align-items: flex-end;
+      gap: 16px;
+      min-width: 0;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      padding: 7px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--green);
+    }
+
+    .page-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .page-tab {
+      min-width: 118px;
+      height: 34px;
+      padding: 0 14px;
+      border: 1px solid #b7bfcc;
+      border-radius: 7px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 750;
+      cursor: pointer;
+    }
+
+    .page-tab.active {
+      border-color: var(--blue);
+      background: var(--blue);
+      color: #fff;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: auto auto auto auto minmax(160px, 260px) minmax(120px, 1fr);
+      gap: 10px;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    button {
+      min-width: 42px;
+      height: 38px;
+      border: 1px solid #b7bfcc;
+      border-radius: 7px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      cursor: pointer;
+    }
+
+    button.primary {
+      min-width: 92px;
+      border-color: var(--blue);
+      background: var(--blue);
+      color: #fff;
+      font-weight: 650;
+    }
+
+    .speed {
+      display: grid;
+      grid-template-columns: 48px 1fr 56px;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--blue);
+    }
+
+    .readout {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(74px, 1fr));
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .metric {
+      min-width: 0;
+      padding: 7px 9px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fbfcfe;
+    }
+
+    .metric label {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .metric strong {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--ink);
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 14px;
+      line-height: 1.4;
+      white-space: nowrap;
+    }
+
+    .stage {
+      display: grid;
+      grid-template-columns: minmax(700px, 1fr) minmax(780px, 820px);
+      gap: 12px;
+      min-height: 0;
+    }
+
+    .page-view {
+      min-height: 0;
+    }
+
+    .page-view[hidden] {
+      display: none !important;
+    }
+
+    .embedded-frame {
+      display: block;
+      width: 100%;
+      height: calc(100vh - 150px);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .visual,
+    .formula-box,
+    .table-wrap {
+      min-height: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    .visual {
+      display: grid;
+      gap: 12px;
+      align-content: start;
+      padding: 14px;
+      overflow: auto;
+    }
+
+    .visual-top {
+      display: grid;
+      grid-template-columns: 86px 265px minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .bit-panel {
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .current-dec {
+      display: grid;
+      gap: 6px;
+      align-content: start;
+      justify-items: start;
+    }
+
+    .current-dec .hex {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 32px;
+      font-weight: 750;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .current-dec .dec {
+      color: var(--muted);
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 16px;
+    }
+
+    .bits {
+      display: grid;
+      gap: 10px;
+    }
+
+    .bit-row {
+      display: grid;
+      grid-template-columns: 76px repeat(8, 18px);
+      gap: 3px;
+      align-items: center;
+    }
+
+    .bit-row.header-row {
+      grid-template-columns: 76px repeat(7, 18px);
+    }
+
+    .bit-row.group-row {
+      grid-template-columns: 76px repeat(7, 18px);
+    }
+
+    .bit-label {
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .bit {
+      width: 18px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #c7cfda;
+      border-radius: 4px;
+      background: var(--bit0);
+      color: #2e3542;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .bit.one {
+      border-color: var(--green);
+      background: var(--green);
+      color: #fff;
+    }
+
+    .bit.changed {
+      outline: 2px solid var(--red);
+      outline-offset: 1px;
+    }
+
+    .preview-box {
+      display: grid;
+      gap: 8px;
+      padding: 12px 12px 12px 26px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fbfcfe;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .preview-line {
+      overflow-wrap: anywhere;
+      white-space: normal;
+    }
+
+    .preview-line b {
+      display: inline-block;
+      width: 64px;
+      color: var(--blue);
+      font-family: "Segoe UI", Arial, "Microsoft JhengHei", sans-serif;
+    }
+
+    .changed-bit {
+      color: var(--red);
+      font-weight: 900;
+    }
+
+    .pv-bit {
+      display: inline-block;
+      min-width: 8px;
+      margin: 0 1px 2px 0;
+      padding: 0 1px;
+      border-radius: 2px;
+      color: #0f172a;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    td .pv-bit {
+      min-width: 6px;
+      margin-right: 0;
+      padding: 0;
+      font-size: 9.5px;
+      line-height: 1.2;
+    }
+
+    .pv-h {
+      background: #d92d20;
+      color: #fff;
+    }
+
+    .pv-label,
+    .pv-replaced-prefix,
+    .pv-constant {
+      background: #9a6500;
+      color: #fff;
+    }
+
+    .pv-flag {
+      background: #7c3aed;
+      color: #fff;
+    }
+
+    .pv-blue {
+      background: #8fc2ff;
+    }
+
+    .pv-light-blue {
+      background: #cfe3ff;
+    }
+
+    .pv-gap {
+      margin: 0 7px;
+      color: var(--muted);
+      font-weight: 900;
+    }
+
+    .formula-box {
+      overflow: auto;
+      padding: 9px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+      line-height: 1.42;
+    }
+
+    .formula-title {
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-family: "Segoe UI", Arial, "Microsoft JhengHei", sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .formula-line {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(190px, 300px);
+      gap: 8px;
+      padding: 2px 4px;
+      border-radius: 5px;
+      align-items: baseline;
+    }
+
+    .formula-line code {
+      display: block;
+      overflow-wrap: anywhere;
+    }
+
+    .formula-line.active {
+      background: var(--amber-soft);
+      color: var(--amber);
+      font-weight: 750;
+    }
+
+    .formula-line .value {
+      color: var(--blue);
+      justify-self: end;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      text-align: right;
+      white-space: normal;
+    }
+
+    .table-wrap {
+      overflow: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 11px;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      padding: 6px 4px;
+      border-bottom: 1px solid var(--line);
+      background: #eef1f6;
+      color: #353b46;
+    }
+
+    tbody td {
+      overflow: hidden;
+      padding: 4px 4px;
+      border-bottom: 1px solid #ebeff5;
+      text-align: center;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    tbody tr.active {
+      background: var(--green-soft);
+      outline: 2px solid rgba(19, 122, 58, 0.35);
+      outline-offset: -2px;
+    }
+
+    .yes { color: var(--red); font-weight: 800; }
+    .no { color: var(--green); font-weight: 800; }
+
+    @media (max-width: 1180px) {
+      main {
+        height: auto;
+        padding: 10px;
+      }
+
+      header {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar,
+      .stage {
+        grid-template-columns: 1fr;
+      }
+
+      .readout {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .visual-top {
+        grid-template-columns: 1fr;
+      }
+
+      .embedded-frame {
+        height: 78vh;
+      }
+    }
+  </style>
+  <style>
+    html,
+    body {
+      height: auto;
+      overflow: auto;
+    }
+
+    main {
+      height: auto;
+      min-height: 100dvh;
+      padding: 8px;
+      gap: 8px;
+    }
+
+    header {
+      grid-template-columns: 1fr;
+      align-items: stretch;
+      gap: 7px;
+    }
+
+    h1 {
+      font-size: 18px;
+      line-height: 1.15;
+    }
+
+    .subtitle {
+      font-size: 11px;
+      white-space: normal;
+    }
+
+    .status {
+      display: none;
+    }
+
+    .page-tabs {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 4px;
+    }
+
+    .page-tab {
+      min-width: 0;
+      height: 30px;
+      padding: 0 3px;
+      font-size: 11px;
+      border-radius: 6px;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 5px;
+      padding: 6px;
+    }
+
+    .toolbar button {
+      min-width: 0;
+      height: 30px;
+      padding: 0 4px;
+      font-size: 12px;
+    }
+
+    .speed {
+      grid-column: 1 / -1;
+      grid-template-columns: 42px 1fr 40px;
+      font-size: 11px;
+    }
+
+    .readout {
+      grid-column: 1 / -1;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 4px;
+    }
+
+    .metric {
+      padding: 5px 6px;
+    }
+
+    .metric strong {
+      font-size: 11px;
+    }
+
+    .stage {
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    .visual {
+      padding: 8px;
+      gap: 8px;
+      overflow: visible;
+    }
+
+    .visual-top {
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    .current-dec .hex {
+      font-size: 24px;
+    }
+
+    .bits {
+      gap: 6px;
+    }
+
+    .preview-box {
+      padding: 8px;
+      font-size: 11px;
+    }
+
+    .formula-box {
+      max-height: 45vh;
+      padding: 7px;
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .formula-line {
+      grid-template-columns: 1fr;
+      gap: 1px;
+      padding: 2px 3px;
+    }
+
+    .formula-line .value {
+      justify-self: start;
+      text-align: left;
+    }
+
+    .table-wrap {
+      max-height: 58vh;
+      overflow: auto;
+    }
+
+    table {
+      min-width: 760px;
+      font-size: 10px;
+    }
+
+    .embedded-frame {
+      height: 82vh;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>CHPI 420B/413B Long Decoding Checker</h1>
+        <div class="subtitle">20bit bus → internal 420b boundary → Header/Label decode → 413b restored payload trace</div>
+      </div>
+      <nav class="page-tabs" aria-label="CHPI long-code page selector">
+        <button class="page-tab active" type="button" data-page="run">程式執行</button>
+        <button class="page-tab" type="button" data-page="flow">流程說明</button>
+        <button class="page-tab" type="button" data-page="real">real case</button>
+        <button class="page-tab" type="button" data-page="logic">decode電路邏輯&verilog</button>
+        <button class="page-tab" type="button" data-page="rgb">20bit CHPI → RGB24</button>
+      </nav>
+      <div class="status" id="status">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">256 cases ready</span>
+      </div>
+    </header>
+
+    <section class="toolbar page-view" data-view="run" aria-label="controls">
+      <button class="primary" id="playBtn" type="button">Pause</button>
+      <button id="prevBtn" type="button">Prev</button>
+      <button id="nextBtn" type="button">Next</button>
+      <button id="resetBtn" type="button">00</button>
+      <div class="speed">
+        <span>Speed</span>
+        <input id="speed" type="range" min="1" max="16" value="5">
+        <span id="speedText">5/s</span>
+      </div>
+      <div class="readout">
+        <div class="metric">
+          <label>DEC</label>
+          <strong id="decValue">0</strong>
+        </div>
+        <div class="metric">
+          <label>8b</label>
+          <strong id="byteValue">00000000</strong>
+        </div>
+        <div class="metric">
+          <label>Header</label>
+          <strong id="headerValue">0000000</strong>
+        </div>
+        <div class="metric">
+          <label>Label</label>
+          <strong id="labelValue">000001</strong>
+        </div>
+        <div class="metric">
+          <label>Replace</label>
+          <strong id="replaceValue">YES</strong>
+        </div>
+        <div class="metric">
+          <label>420/413</label>
+          <strong id="lenValue">420b → 413b</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="stage page-view" data-view="run">
+      <aside class="visual">
+        <div class="visual-top">
+          <div class="current-dec">
+            <div class="hex" id="largeHex">8'h00</div>
+            <div class="dec" id="largeDec">DEC 0</div>
+          </div>
+
+          <div class="bit-panel">
+            <div class="bits">
+              <div class="bit-row" id="byteBits">
+                <div class="bit-label">data[7:0]</div>
+              </div>
+              <div class="bit-row header-row" id="headerBits">
+                <div class="bit-label">header</div>
+              </div>
+              <div class="bit-row group-row" id="groupInBits">
+                <div class="bit-label">420 group</div>
+              </div>
+              <div class="bit-row group-row" id="groupOutBits">
+                <div class="bit-label">413 group</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="preview-box">
+            <div class="preview-line"><b>420b in</b> <span id="preview420"></span></div>
+            <div class="preview-line"><b>413b out</b> <span id="preview413"></span></div>
+            <div class="preview-line"><b>rule</b> <span id="ruleText"></span></div>
+          </div>
+        </div>
+
+        <section class="formula-box" id="formulaBox">
+          <div class="formula-title">Synthesizable small-area RTL trace：20bit bus streaming decode</div>
+          <div class="formula-line" data-step="0">
+            <code>module chpi_420b413b_rgb24_dec (</code>
+            <span class="value"></span>
+          </div>
+          <div class="formula-line" data-step="1">
+            <code>  input clk, rst_n, valid_i, input [19:0] din20,</code>
+            <span class="value" id="tracePayload">20bit bus only</span>
+          </div>
+          <div class="formula-line" data-step="2">
+            <code>  output reg rgb_valid, output reg [23:0] rgb_data);</code>
+            <span class="value" id="traceGroup">small buffers</span>
+          </div>
+          <div class="formula-line" data-step="3">
+            <code>reg [25:0] raw_fifo; reg [31:0] rgb_fifo;</code>
+            <span class="value" id="traceUsed">counter only</span>
+          </div>
+          <div class="formula-line" data-step="4">
+            <code>reg [5:0] raw_cnt, rgb_cnt; reg [8:0] bit_cnt_420;</code>
+            <span class="value" id="traceReplace">1'b1</span>
+          </div>
+          <div class="formula-line" data-step="5">
+            <code>if (rgb_cnt_next &gt;= 6\x27d24) emit one RGB24;</code>
+            <span class="value" id="traceLabel">6'b000001</span>
+          </div>
+          <div class="formula-line" data-step="6">
+            <code>if (valid_i) raw_fifo_next = raw_fifo | (din20 &lt;&lt; raw_cnt);</code>
+            <span class="value" id="traceH">1'b1</span>
+          </div>
+          <div class="formula-line" data-step="7">
+            <code>if (valid_i) raw_cnt_next = raw_cnt + 6\x27d20;</code>
+            <span class="value" id="traceHeader">7'b1000001</span>
+          </div>
+          <div class="formula-line" data-step="8">
+            <code>end</code>
+            <span class="value" id="traceZero">7'b0000010</span>
+          </div>
+          <div class="formula-line" data-step="9">
+            <code>for (k=0; k&lt;3; k=k+1) if (raw_cnt_next &gt;= 6\x27d7) begin</code>
+            <span class="value" id="traceOne">7'b0000011</span>
+          </div>
+          <div class="formula-line" data-step="10">
+            <code>  group_in = raw_fifo_next[6:0];</code>
+            <span class="value" id="traceDout">413'b...</span>
+          </div>
+          <div class="formula-line" data-step="11">
+            <code>  if (bit_cnt_420 == 9'd0) begin</code>
+            <span class="value">20bit bus</span>
+          </div>
+          <div class="formula-line" data-step="12">
+            <code>    header_reg = group_in; label_reg = group_in[5:0];</code>
+            <span class="value"></span>
+          </div>
+          <div class="formula-line" data-step="13">
+            <code>    replace_en = (group_in[5:0] != {6{~group_in[6]}});</code>
+            <span class="value"></span>
+          </div>
+          <div class="formula-line" data-step="14">
+            <code>  end else if (replace_en &amp;&amp; group_in[6:1] == label_reg)</code>
+            <span class="value"></span>
+          </div>
+          <div class="formula-line" data-step="15">
+            <code>    group_out = group_in[0] ? 7'b1111111 : 7'b0000000;</code>
+            <span class="value"></span>
+          </div>
+          <div class="formula-line" data-step="16">
+            <code>  else group_out = group_in;</code>
+            <span class="value"></span>
+          </div>
+          <div class="formula-line" data-step="17">
+            <code>  if (bit_cnt_420 != 9'd0) begin</code>
+            <span class="value"></span>
+          </div>
+          <div class="formula-line" data-step="18">
+            <code>    rgb_fifo_next = rgb_fifo_next | (group_out &lt;&lt; rgb_cnt_next);</code>
+            <span class="value"></span>
+          </div>
+          <div class="formula-line" data-step="19">
+            <code>    rgb_cnt_next = rgb_cnt_next + 6\x27d7;</code>
+            <span class="value"></span>
+          </div>
+          <div class="formula-line" data-step="20">
+            <code>  if (rgb_cnt_next &gt;= 6\x27d24) begin</code>
+            <span class="value"></span>
+          </div>
+          <div class="formula-line" data-step="21">
+            <code>    rgb_data &lt;= rgb_fifo_next[23:0]; rgb_valid &lt;= 1\x27b1;</code>
+            <span class="value"></span>
+          </div>
+          <div class="formula-line" data-step="22">
+            <code>    rgb_fifo_next = rgb_fifo_next &gt;&gt; 24; rgb_cnt_next = rgb_cnt_next - 6\x27d24;</code>
+            <span class="value"></span>
+          </div>
+          <div class="formula-line" data-step="23">
+            <code>  end</code>
+            <span class="value"></span>
+          </div>
+          <div class="formula-line" data-step="24">
+            <code>  raw_fifo_next = raw_fifo_next &gt;&gt; 7; raw_cnt_next = raw_cnt_next - 6\x27d7;</code>
+            <span class="value"></span>
+          </div>
+          <div class="formula-line" data-step="25">
+            <code>  bit_cnt_420 = (bit_cnt_420 == 9'd413) ? 9'd0 : bit_cnt_420 + 9'd7;</code>
+            <span class="value"></span>
+          </div>
+          <div class="formula-line" data-step="26">
+            <code>end</code>
+            <span class="value"></span>
+          </div>
+          <div class="formula-line" data-step="27">
+            <code>// RGB buffer drains whenever it has at least 24 effective bits.</code>
+            <span class="value"></span>
+          </div>
+          <div class="formula-line" data-step="28">
+            <code>// no 420bit block buffer; 420b is only a 21-clock counter boundary.</code>
+            <span class="value"></span>
+          </div>
+          <div class="formula-line" data-step="29">
+            <code>endmodule</code>
+            <span class="value"></span>
+          </div>
+        </section>
+      </aside>
+
+      <div class="table-wrap" id="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:42px;">DEC</th>
+              <th style="width:70px;">8b</th>
+              <th style="width:58px;">Label</th>
+              <th style="width:66px;">Header</th>
+              <th style="width:58px;">Rep</th>
+              <th style="width:230px;">420b first32</th>
+              <th style="width:230px;">413b first32</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="page-view" data-view="flow" hidden>
+      <iframe class="embedded-frame" title="流程說明" srcdoc="&lt;!doctype html>
+&lt;html lang=&quot;zh-Hant&quot;>
+&lt;head>
+  &lt;meta charset=&quot;utf-8&quot;>
+  &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
+  &lt;title>基於分組標籤替換流程圖&lt;/title>
+  &lt;style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f6f8;
+      --ink: #16181d;
+      --muted: #69707d;
+      --line: #cad2df;
+      --panel: #ffffff;
+      --blue: #164fd1;
+      --blue-soft: #eaf2ff;
+      --amber: #b26b00;
+      --amber-soft: #fff4d8;
+      --red: #b42318;
+      --red-soft: #fde8e7;
+      --green: #137a3a;
+      --green-soft: #e7f6ec;
+      --violet-soft: #eee9ff;
+      --shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: &quot;Segoe UI&quot;, Arial, &quot;Microsoft JhengHei&quot;, sans-serif;
+    }
+
+    .page {
+      display: grid;
+      gap: 14px;
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 18px;
+    }
+
+    header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .page-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .page-tabs a {
+      min-width: 116px;
+      padding: 8px 12px;
+      border: 1px solid #b7bfcc;
+      border-radius: 7px;
+      background: #fff;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 750;
+      text-align: center;
+      text-decoration: none;
+    }
+
+    .page-tabs a.active {
+      border-color: var(--blue);
+      background: var(--blue);
+      color: #fff;
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--blue);
+      font-size: 28px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin-top: 6px;
+      color: var(--ink);
+      font-size: 16px;
+      line-height: 1.45;
+    }
+
+    .subtitle strong,
+    .blue {
+      color: #001eff;
+      font-weight: 800;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .badge {
+      padding: 6px 9px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fbfcfe;
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(340px, 0.75fr);
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .panel {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .panel-title {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      color: var(--ink);
+      font-size: 17px;
+      font-weight: 800;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(150px, 1fr));
+      gap: 10px;
+      padding: 14px;
+      align-items: stretch;
+    }
+
+    .node {
+      position: relative;
+      display: grid;
+      gap: 7px;
+      min-height: 136px;
+      padding: 12px;
+      border: 2px solid #9eabbc;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .node::after {
+      content: &quot;&quot;;
+      position: absolute;
+      top: 50%;
+      right: -18px;
+      width: 24px;
+      height: 2px;
+      background: #1f2937;
+      transform: translateY(-50%);
+      z-index: 2;
+    }
+
+    .node::before {
+      content: &quot;&quot;;
+      position: absolute;
+      top: calc(50% - 5px);
+      right: -20px;
+      border-left: 9px solid #1f2937;
+      border-top: 6px solid transparent;
+      border-bottom: 6px solid transparent;
+      z-index: 3;
+    }
+
+    .node:last-child::before,
+    .node:last-child::after,
+    .node.no-arrow::before,
+    .node.no-arrow::after {
+      display: none;
+    }
+
+    .node h2 {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    .node p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .node.bluebox {
+      border-color: #7aa7ff;
+      background: var(--blue-soft);
+    }
+
+    .node.greenbox {
+      border-color: #7bc99a;
+      background: var(--green-soft);
+    }
+
+    .node.amberbox {
+      border-color: #edc266;
+      background: var(--amber-soft);
+    }
+
+    .node.redbox {
+      border-color: #f3a49f;
+      background: var(--red-soft);
+    }
+
+    .node.violetbox {
+      border-color: #c4b5fd;
+      background: var(--violet-soft);
+    }
+
+    code,
+    .mono {
+      font-family: Consolas, &quot;Courier New&quot;, monospace;
+    }
+
+    .bit-demo {
+      display: grid;
+      gap: 12px;
+      padding: 14px;
+    }
+
+    .lane {
+      display: grid;
+      grid-template-columns: 94px 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .lane-label {
+      padding: 8px 10px;
+      border: 1px solid #4d6f9f;
+      background: #f8fbff;
+      font-weight: 750;
+      text-align: center;
+    }
+
+    .bits {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .bits .ellipsis {
+      padding: 0 8px;
+      font-size: 22px;
+      letter-spacing: 5px;
+    }
+
+    .block {
+      display: inline-grid;
+      place-items: center;
+      min-width: 62px;
+      height: 30px;
+      padding: 0 7px;
+      border: 2px solid #1f2937;
+      border-radius: 5px;
+      background: #fff;
+      font-family: Consolas, &quot;Courier New&quot;, monospace;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    .block.tag6 {
+      border-color: #d9a636;
+      background: #fff4c8;
+    }
+
+    .block.flag {
+      min-width: 28px;
+      border-color: #ef8d8d;
+      background: #ffdede;
+      color: #7d1212;
+      font-weight: 800;
+    }
+
+    .block.no-code {
+      border-color: #b9aacd;
+      background: #f0eaff;
+    }
+
+    .down {
+      display: grid;
+      place-items: center;
+      margin: -4px 0;
+      color: #2b3748;
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .legend {
+      display: grid;
+      gap: 10px;
+      padding: 14px;
+    }
+
+    .legend-row {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 8px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    .swatch {
+      width: 22px;
+      height: 22px;
+      border: 2px solid var(--line);
+      border-radius: 5px;
+    }
+
+    .swatch.violet {
+      border-color: #b7a6d5;
+      background: #f0eaff;
+    }
+
+    .swatch.yellow {
+      border-color: #d9a636;
+      background: #fff4c8;
+    }
+
+    .swatch.red {
+      border-color: #ef8d8d;
+      background: #ffdede;
+    }
+
+    .rules {
+      display: grid;
+      gap: 9px;
+      padding: 14px 18px 16px 28px;
+      margin: 0;
+      color: var(--ink);
+      font-size: 16px;
+      line-height: 1.55;
+    }
+
+    .rules li::marker {
+      color: #111;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .decode-flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(170px, 1fr));
+      gap: 10px;
+      padding: 14px;
+    }
+
+    .format {
+      display: grid;
+      gap: 9px;
+      padding: 14px;
+      font-size: 15px;
+      line-height: 1.45;
+    }
+
+    .format-line {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .nonint-flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(150px, 1fr));
+      gap: 10px;
+      padding: 14px;
+    }
+
+    .packet-demo {
+      display: grid;
+      gap: 12px;
+      padding: 14px;
+      border-top: 1px solid var(--line);
+    }
+
+    .packet-row {
+      display: grid;
+      grid-template-columns: 108px 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .packet-label {
+      padding: 8px 10px;
+      border: 1px solid #6f8ab5;
+      border-radius: 6px;
+      background: #f8fbff;
+      font-size: 13px;
+      font-weight: 800;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .packet-line {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .pkt {
+      display: inline-grid;
+      place-items: center;
+      min-width: 56px;
+      min-height: 32px;
+      padding: 5px 8px;
+      border: 2px solid #1f2937;
+      border-radius: 6px;
+      background: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .pkt.data {
+      min-width: 150px;
+      border-color: #33a7d8;
+      background: #bfeeff;
+      color: #06364a;
+    }
+
+    .pkt.hbp {
+      min-width: 120px;
+      border-color: #a1a7ae;
+      background: #eef0f2;
+      color: #616a73;
+    }
+
+    .pkt.dummy {
+      border-color: #f3a142;
+      background: #fff0d8;
+      color: #7a3c00;
+    }
+
+    .pkt.enc {
+      min-width: 170px;
+      border-color: #2284b8;
+      background: #43c7f2;
+      color: #053446;
+    }
+
+    .pkt.trim {
+      border-color: #ef8d8d;
+      background: #ffdede;
+      color: #8a1010;
+    }
+
+    .pkt.note {
+      min-width: 78px;
+      border-color: #d9a636;
+      background: #fff4c8;
+      color: #6c4200;
+    }
+
+    .scramble-grid {
+      display: grid;
+      grid-template-columns: minmax(420px, 1fr) minmax(420px, 1fr);
+      gap: 14px;
+      padding: 14px;
+    }
+
+    .code-box {
+      overflow: auto;
+      min-width: 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+      font-family: Consolas, &quot;Courier New&quot;, monospace;
+      font-size: 13px;
+      line-height: 1.45;
+      white-space: pre;
+    }
+
+    .scr-diagram {
+      display: grid;
+      gap: 12px;
+      align-content: start;
+      min-width: 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+    }
+
+    .scr-row {
+      display: grid;
+      grid-template-columns: 84px repeat(7, minmax(34px, 1fr));
+      gap: 5px;
+      align-items: center;
+    }
+
+    .scr-label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+      text-align: right;
+    }
+
+    .scr-cell {
+      display: grid;
+      place-items: center;
+      min-height: 30px;
+      border: 1px solid #a9b4c4;
+      border-radius: 5px;
+      background: #fff;
+      font-family: Consolas, &quot;Courier New&quot;, monospace;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .scr-cell.key {
+      border-color: #d9a636;
+      background: #fff4c8;
+      color: #6c4200;
+    }
+
+    .scr-cell.out {
+      border-color: #31a4c7;
+      background: #bfeeff;
+      color: #06364a;
+    }
+
+    .xor-line {
+      color: var(--red);
+      font-size: 14px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .rule-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 14px;
+    }
+
+    .rule-table th {
+      padding: 8px;
+      background: #0d628a;
+      color: #fff;
+      text-align: center;
+    }
+
+    .rule-table td {
+      padding: 8px;
+      border: 1px solid #fff;
+      background: #dce2ea;
+      text-align: center;
+    }
+
+    .rule-table tr:nth-child(even) td {
+      background: #c9d1dc;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 8px;
+      padding: 14px;
+      border-top: 1px solid var(--line);
+    }
+
+    .verilog-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(420px, 1fr));
+      gap: 14px;
+      padding: 14px;
+    }
+
+    .verilog-note {
+      padding: 0 14px 14px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .send-order {
+      color: var(--blue);
+      font-size: 14px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    @media (max-width: 1100px) {
+      .grid,
+      .split {
+        grid-template-columns: 1fr;
+      }
+
+      .flow,
+      .decode-flow,
+      .nonint-flow {
+        grid-template-columns: 1fr;
+      }
+
+      .packet-row {
+        grid-template-columns: 1fr;
+      }
+
+      .scramble-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .verilog-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .scr-row {
+        grid-template-columns: 72px repeat(7, minmax(28px, 1fr));
+      }
+
+      .node::before,
+      .node::after {
+        display: none;
+      }
+    }
+  &lt;/style>
+&lt;/head>
+&lt;body>
+  &lt;main class=&quot;page&quot;>
+    &lt;nav class=&quot;page-tabs&quot; aria-label=&quot;page selector&quot;>
+      &lt;a class=&quot;active&quot; href=&quot;group_label_replace_flowchart.html&quot;>流程說明&lt;/a>
+      &lt;a href=&quot;group_label_real_case.html&quot;>Real Case&lt;/a>
+    &lt;/nav>
+
+    &lt;header>
+      &lt;div>
+        &lt;h1>基於分組標籤替換&lt;/h1>
+        &lt;div class=&quot;subtitle&quot;>
+          輸入 &lt;strong>413&lt;/strong> 比特，輸出 &lt;strong>420&lt;/strong> 比特，
+          編碼效率 &lt;strong>98.33%&lt;/strong>（413/420），最大連續數量 &lt;strong>不超過 12 個&lt;/strong>
+        &lt;/div>
+      &lt;/div>
+      &lt;div class=&quot;badge-row&quot;>
+        &lt;div class=&quot;badge&quot;>59 組 × 7b = 413b&lt;/div>
+        &lt;div class=&quot;badge&quot;>2&lt;sup>6&lt;/sup> = 64 種標籤&lt;/div>
+        &lt;div class=&quot;badge&quot;>送出順序 A → B&lt;/div>
+      &lt;/div>
+    &lt;/header>
+
+    &lt;section class=&quot;grid&quot;>
+      &lt;div class=&quot;panel&quot;>
+        &lt;div class=&quot;panel-title&quot;>Encoding 主流程&lt;/div>
+        &lt;div class=&quot;flow&quot;>
+          &lt;section class=&quot;node bluebox&quot;>
+            &lt;h2>1. 輸入 413b&lt;/h2>
+            &lt;p>輸入資料每 &lt;span class=&quot;blue&quot;>7 bit&lt;/span> 框成一組，共框出 &lt;span class=&quot;blue&quot;>59 組&lt;/span>。&lt;/p>
+            &lt;p class=&quot;mono&quot;>413bit = 59 × 7bit&lt;/p>
+          &lt;/section>
+
+          &lt;section class=&quot;node&quot;>
+            &lt;h2>2. 找 Label&lt;/h2>
+            &lt;p>把這 59 組每組的前 &lt;span class=&quot;blue&quot;>6 bit&lt;/span> 全部找出來。&lt;/p>
+            &lt;p>從沒出現過的 6bit 值中選一個當 &lt;span class=&quot;blue&quot;>Label&lt;/span>。&lt;/p>
+          &lt;/section>
+
+          &lt;section class=&quot;node greenbox&quot;>
+            &lt;h2>3. 替換全 0 / 全 1&lt;/h2>
+            &lt;p>若某個 7bit group 是 &lt;code>0000000&lt;/code>，替換成 &lt;code>Label + 0&lt;/code>。&lt;/p>
+            &lt;p>若是 &lt;code>1111111&lt;/code>，替換成 &lt;code>Label + 1&lt;/code>。&lt;/p>
+          &lt;/section>
+
+          &lt;section class=&quot;node amberbox&quot;>
+            &lt;h2>4. 加 Header&lt;/h2>
+            &lt;p>有替換時，420bit 最前面加上 &lt;span class=&quot;blue&quot;>H + Label&lt;/span>。&lt;/p>
+            &lt;p>&lt;code>H&lt;/code> 是上一個送出 bit 的反相。&lt;/p>
+          &lt;/section>
+
+          &lt;section class=&quot;node violetbox no-arrow&quot;>
+            &lt;h2>5. 輸出 420b&lt;/h2>
+            &lt;p>&lt;code>420bit = header 7bit + 413bit&lt;/code>。&lt;/p>
+            &lt;p>若完全沒替換，則 &lt;code>header = H + 6 個 ~H&lt;/code>。&lt;/p>
+          &lt;/section>
+        &lt;/div>
+      &lt;/div>
+
+      &lt;aside class=&quot;panel&quot;>
+        &lt;div class=&quot;panel-title&quot;>圖例&lt;/div>
+        &lt;div class=&quot;legend&quot;>
+          &lt;div class=&quot;legend-row&quot;>
+            &lt;span class=&quot;swatch violet&quot;>&lt;/span>
+            &lt;span>7b 特殊頭：6b 標籤 + 1b 指示，或 no-code header&lt;/span>
+          &lt;/div>
+          &lt;div class=&quot;legend-row&quot;>
+            &lt;span class=&quot;swatch yellow&quot;>&lt;/span>
+            &lt;span>6b 標籤：選一個目前資料中不存在的前 6b 樣式&lt;/span>
+          &lt;/div>
+          &lt;div class=&quot;legend-row&quot;>
+            &lt;span class=&quot;swatch red&quot;>&lt;/span>
+            &lt;span>1b 類型指示符：表示被替換的是全 0 或全 1&lt;/span>
+          &lt;/div>
+        &lt;/div>
+      &lt;/aside>
+    &lt;/section>
+
+    &lt;section class=&quot;panel&quot;>
+      &lt;div class=&quot;panel-title&quot;>位元排列範例&lt;/div>
+      &lt;div class=&quot;bit-demo&quot;>
+        &lt;div class=&quot;lane&quot;>
+          &lt;div class=&quot;lane-label&quot;>輸入 413b&lt;/div>
+          &lt;div class=&quot;bits&quot;>
+            &lt;span class=&quot;block&quot;>1001101&lt;/span>
+            &lt;span class=&quot;block&quot;>1110000&lt;/span>
+            &lt;span class=&quot;block&quot;>0000000&lt;/span>
+            &lt;span class=&quot;ellipsis&quot;>...&lt;/span>
+            &lt;span class=&quot;block&quot;>1111111&lt;/span>
+            &lt;span class=&quot;block&quot;>1010010&lt;/span>
+          &lt;/div>
+        &lt;/div>
+
+        &lt;div class=&quot;down&quot;>↓&lt;/div>
+
+        &lt;div class=&quot;lane&quot;>
+          &lt;div class=&quot;lane-label&quot;>輸出 420b&lt;/div>
+          &lt;div class=&quot;bits&quot;>
+            &lt;span class=&quot;block no-code&quot;>0/1&lt;/span>
+            &lt;span class=&quot;block tag6&quot;>101010&lt;/span>
+            &lt;span class=&quot;block&quot;>1001101&lt;/span>
+            &lt;span class=&quot;block&quot;>1110000&lt;/span>
+            &lt;span class=&quot;block tag6&quot;>101010&lt;/span>
+            &lt;span class=&quot;block flag&quot;>0&lt;/span>
+            &lt;span class=&quot;ellipsis&quot;>...&lt;/span>
+            &lt;span class=&quot;block tag6&quot;>101010&lt;/span>
+            &lt;span class=&quot;block flag&quot;>1&lt;/span>
+            &lt;span class=&quot;block&quot;>1010010&lt;/span>
+          &lt;/div>
+        &lt;/div>
+        &lt;div class=&quot;send-order&quot;>發送順序為 A → B&lt;/div>
+      &lt;/div>
+    &lt;/section>
+
+    &lt;section class=&quot;split&quot;>
+      &lt;section class=&quot;panel&quot;>
+        &lt;div class=&quot;panel-title&quot;>判斷規則&lt;/div>
+        &lt;ul class=&quot;rules&quot;>
+          &lt;li>輸入資料每 &lt;span class=&quot;blue&quot;>7bit&lt;/span> 框成一組，共 &lt;span class=&quot;blue&quot;>59 組&lt;/span>，也就是 &lt;span class=&quot;blue&quot;>413bit&lt;/span>。&lt;/li>
+          &lt;li>將每組 7bit 的前 &lt;span class=&quot;blue&quot;>6bit&lt;/span> 全找出來，找一個沒出現過的 6bit 值當 Label。&lt;/li>
+          &lt;li>只有 &lt;span class=&quot;blue mono&quot;>0000000&lt;/span> 或 &lt;span class=&quot;blue mono&quot;>1111111&lt;/span> 需要替換；全 0 換成 &lt;code>Label+0&lt;/code>，全 1 換成 &lt;code>Label+1&lt;/code>。&lt;/li>
+          &lt;li>有替換時，輸出前面加 &lt;code>H+Label&lt;/code>；&lt;code>H&lt;/code> 是上一個送出 bit 的反相。&lt;/li>
+          &lt;li>若完全都沒替換，則 &lt;code>header=H+6個~H&lt;/code>。&lt;/li>
+        &lt;/ul>
+      &lt;/section>
+
+      &lt;section class=&quot;panel&quot;>
+        &lt;div class=&quot;panel-title&quot;>Decode 還原流程&lt;/div>
+        &lt;div class=&quot;decode-flow&quot;>
+          &lt;section class=&quot;node violetbox&quot;>
+            &lt;h2>1. 讀取頭部&lt;/h2>
+            &lt;p>先判斷頭部是 no-code header，或是 6b 替換標籤。&lt;/p>
+          &lt;/section>
+          &lt;section class=&quot;node&quot;>
+            &lt;h2>2. 掃描 59 組&lt;/h2>
+            &lt;p>逐組檢查是否等於標籤樣式。&lt;/p>
+          &lt;/section>
+          &lt;section class=&quot;node amberbox&quot;>
+            &lt;h2>3. 依 flag 還原&lt;/h2>
+            &lt;p>flag=0 還原成 &lt;code>0000000&lt;/code>；flag=1 還原成 &lt;code>1111111&lt;/code>。&lt;/p>
+          &lt;/section>
+          &lt;section class=&quot;node greenbox no-arrow&quot;>
+            &lt;h2>4. 輸出 413b&lt;/h2>
+            &lt;p>移除頭部，合併 59 組，回到原始 413b。&lt;/p>
+          &lt;/section>
+        &lt;/div>
+      &lt;/section>
+    &lt;/section>
+
+    &lt;section class=&quot;panel&quot;>
+      &lt;div class=&quot;panel-title&quot;>輸出格式摘要&lt;/div>
+      &lt;div class=&quot;format&quot;>
+        &lt;div class=&quot;format-line&quot;>
+          &lt;strong>需要替換&lt;/strong>
+          &lt;span>&lt;code>header = H + Label&lt;/code>；後面接 59 組處理後的 7bit data。遇到 &lt;code>Label+0&lt;/code> 還原全 0，遇到 &lt;code>Label+1&lt;/code> 還原全 1。&lt;/span>
+        &lt;/div>
+        &lt;div class=&quot;format-line&quot;>
+          &lt;strong>不需替換&lt;/strong>
+          &lt;span>&lt;code>header = H + 6 個 ~H&lt;/code>；後面接原本 59 組 7bit data，表示這包沒有做替換。&lt;/span>
+        &lt;/div>
+      &lt;/div>
+    &lt;/section>
+
+    &lt;section class=&quot;panel&quot;>
+      &lt;div class=&quot;panel-title&quot;>非 413b 整數倍資料處理&lt;/div>
+      &lt;div class=&quot;nonint-flow&quot;>
+        &lt;section class=&quot;node bluebox&quot;>
+          &lt;h2>1. 判斷資料長度&lt;/h2>
+          &lt;p>若待編碼資料不是 413b 的整數倍，先進入補位流程。&lt;/p>
+          &lt;p class=&quot;mono&quot;>payload % 413 != 0&lt;/p>
+        &lt;/section>
+
+        &lt;section class=&quot;node amberbox&quot;>
+          &lt;h2>2. 補 Dmy(0)&lt;/h2>
+          &lt;p>先把資料補 0 到 413b 整數倍，再做加擾。&lt;/p>
+          &lt;p>&lt;code>SCR EN = 1&lt;/code>&lt;/p>
+        &lt;/section>
+
+        &lt;section class=&quot;node greenbox&quot;>
+          &lt;h2>3. 加擾 SCR_XOR&lt;/h2>
+          &lt;p>補齊後的有效資料先做 7bit 加擾。K 碼不加擾，DATA / CTRL_L 會更新 SCR key。&lt;/p>
+        &lt;/section>
+
+        &lt;section class=&quot;node redbox&quot;>
+          &lt;h2>4. 413b / 420b 編碼&lt;/h2>
+          &lt;p>加擾後再依分組標籤替換流程，把每個 413b block 編成 420b。&lt;/p>
+        &lt;/section>
+
+        &lt;section class=&quot;node violetbox no-arrow&quot;>
+          &lt;h2>5. 去 dummy / 70b 對齊&lt;/h2>
+          &lt;p>編碼後去掉 dummy 位，再依最大的 70bit 整數倍做多通道填充。&lt;/p>
+          &lt;p>720ch 為 &lt;code>N&lt;/code> bit、726ch 為 &lt;code>N+70&lt;/code> bit 時，統一按照 &lt;code>N+70&lt;/code> bit。&lt;/p>
+        &lt;/section>
+      &lt;/div>
+
+      &lt;div class=&quot;packet-demo&quot;>
+        &lt;div class=&quot;packet-row&quot;>
+          &lt;div class=&quot;packet-label&quot;>Before ENC&lt;/div>
+          &lt;div class=&quot;packet-line&quot;>
+            &lt;span class=&quot;pkt note&quot;>K1&lt;/span>
+            &lt;span class=&quot;pkt data&quot;>RGB / C.F.&lt;/span>
+            &lt;span class=&quot;pkt note&quot;>K2&lt;/span>
+            &lt;span class=&quot;pkt hbp&quot;>HBP&lt;/span>
+            &lt;span class=&quot;pkt dummy&quot;>Dmy(0)&lt;/span>
+          &lt;/div>
+        &lt;/div>
+
+        &lt;div class=&quot;down&quot;>↓ SCR_XOR 加擾 → 413b / 420b Encode&lt;/div>
+
+        &lt;div class=&quot;packet-row&quot;>
+          &lt;div class=&quot;packet-label&quot;>After ENC&lt;/div>
+          &lt;div class=&quot;packet-line&quot;>
+            &lt;span class=&quot;pkt note&quot;>K1&lt;/span>
+            &lt;span class=&quot;pkt enc&quot;>RGB / C.F. (ENC)&lt;/span>
+            &lt;span class=&quot;pkt trim&quot;>移除 Dmy&lt;/span>
+            &lt;span class=&quot;pkt note&quot;>K2&lt;/span>
+            &lt;span class=&quot;pkt note&quot;>K5~K8&lt;/span>
+            &lt;span class=&quot;pkt dummy&quot;>70b × N 對齊&lt;/span>
+          &lt;/div>
+        &lt;/div>
+      &lt;/div>
+
+      &lt;ul class=&quot;rules&quot;>
+        &lt;li>先將待編碼資料補充 &lt;span class=&quot;blue&quot;>Dmy(0)&lt;/span> 至 &lt;span class=&quot;blue&quot;>413b 整數倍&lt;/span>。&lt;/li>
+        &lt;li>補齊後必須先進行 &lt;span class=&quot;blue&quot;>SCR_XOR 加擾&lt;/span>，再做 &lt;span class=&quot;blue&quot;>413b/420b 編碼&lt;/span>。&lt;/li>
+        &lt;li>編碼後去掉補充的 dummy 位，但發送資料仍需維持 &lt;span class=&quot;blue&quot;>70b 整數倍&lt;/span>。&lt;/li>
+        &lt;li>通道數不同時，以最大的 70bit 整數倍資料填充；例如 720 通道 Dmy 為 &lt;span class=&quot;blue mono&quot;>N bit&lt;/span>、726 通道 Dmy 為 &lt;span class=&quot;blue mono&quot;>N+70 bit&lt;/span>，則統一按照 &lt;span class=&quot;blue mono&quot;>N+70 bit&lt;/span> 填充。&lt;/li>
+      &lt;/ul>
+    &lt;/section>
+
+    &lt;section class=&quot;panel&quot;>
+      &lt;div class=&quot;panel-title&quot;>7bit 加擾公式與 SCR key 滾動&lt;/div>
+      &lt;div class=&quot;scramble-grid&quot;>
+        &lt;div class=&quot;code-box&quot;>// lfsr[15:0] = 1 + x^3 + x^4 + x^5 + x^16
+always @(posedge clk_48 or negedge rst_n) begin
+  lfsr_c[0]  = lfsr_q[9];
+  lfsr_c[1]  = lfsr_q[10];
+  lfsr_c[2]  = lfsr_q[11];
+  lfsr_c[3]  = lfsr_q[12] ^ lfsr_q[9];
+  lfsr_c[4]  = lfsr_q[13] ^ lfsr_q[10] ^ lfsr_q[9];
+  lfsr_c[5]  = lfsr_q[14] ^ lfsr_q[11] ^ lfsr_q[10] ^ lfsr_q[9];
+  lfsr_c[6]  = lfsr_q[15] ^ lfsr_q[12] ^ lfsr_q[11] ^ lfsr_q[10];
+  lfsr_c[7]  = lfsr_q[0]  ^ lfsr_q[13] ^ lfsr_q[12] ^ lfsr_q[11];
+  lfsr_c[8]  = lfsr_q[1]  ^ lfsr_q[14] ^ lfsr_q[13] ^ lfsr_q[12];
+  lfsr_c[9]  = lfsr_q[2]  ^ lfsr_q[15] ^ lfsr_q[14] ^ lfsr_q[13];
+  lfsr_c[10] = lfsr_q[3]  ^ lfsr_q[15] ^ lfsr_q[14];
+  lfsr_c[11] = lfsr_q[4]  ^ lfsr_q[15];
+  lfsr_c[12] = lfsr_q[5];
+  lfsr_c[13] = lfsr_q[6];
+  lfsr_c[14] = lfsr_q[7];
+  lfsr_c[15] = lfsr_q[8];
+end
+
+always @(posedge clk_48 or negedge rst_n) begin
+  data_c[0] = data_in[0] ^ lfsr_q[9];
+  data_c[1] = data_in[1] ^ lfsr_q[10];
+  data_c[2] = data_in[2] ^ lfsr_q[11];
+  data_c[3] = data_in[3] ^ lfsr_q[12];
+  data_c[4] = data_in[4] ^ lfsr_q[13];
+  data_c[5] = data_in[5] ^ lfsr_q[14];
+  data_c[6] = data_in[6] ^ lfsr_q[15];
+end&lt;/div>
+
+        &lt;div class=&quot;scr-diagram&quot;>
+          &lt;div>
+            &lt;strong>7bit SCR_XOR&lt;/strong>
+            &lt;p>每個 7bit data 與 LFSR key[15:9] 做 XOR，得到 scrambled data。&lt;/p>
+          &lt;/div>
+          &lt;div class=&quot;scr-row&quot;>
+            &lt;div class=&quot;scr-label&quot;>Raw Data&lt;/div>
+            &lt;div class=&quot;scr-cell&quot;>Din0&lt;/div>
+            &lt;div class=&quot;scr-cell&quot;>Din1&lt;/div>
+            &lt;div class=&quot;scr-cell&quot;>Din2&lt;/div>
+            &lt;div class=&quot;scr-cell&quot;>Din3&lt;/div>
+            &lt;div class=&quot;scr-cell&quot;>Din4&lt;/div>
+            &lt;div class=&quot;scr-cell&quot;>Din5&lt;/div>
+            &lt;div class=&quot;scr-cell&quot;>Din6&lt;/div>
+          &lt;/div>
+          &lt;div class=&quot;xor-line&quot;>XOR&lt;/div>
+          &lt;div class=&quot;scr-row&quot;>
+            &lt;div class=&quot;scr-label&quot;>SCR key&lt;/div>
+            &lt;div class=&quot;scr-cell key&quot;>q9&lt;/div>
+            &lt;div class=&quot;scr-cell key&quot;>q10&lt;/div>
+            &lt;div class=&quot;scr-cell key&quot;>q11&lt;/div>
+            &lt;div class=&quot;scr-cell key&quot;>q12&lt;/div>
+            &lt;div class=&quot;scr-cell key&quot;>q13&lt;/div>
+            &lt;div class=&quot;scr-cell key&quot;>q14&lt;/div>
+            &lt;div class=&quot;scr-cell key&quot;>q15&lt;/div>
+          &lt;/div>
+          &lt;div class=&quot;down&quot;>↓&lt;/div>
+          &lt;div class=&quot;scr-row&quot;>
+            &lt;div class=&quot;scr-label&quot;>Scrambled&lt;/div>
+            &lt;div class=&quot;scr-cell out&quot;>Dout0&lt;/div>
+            &lt;div class=&quot;scr-cell out&quot;>Dout1&lt;/div>
+            &lt;div class=&quot;scr-cell out&quot;>Dout2&lt;/div>
+            &lt;div class=&quot;scr-cell out&quot;>Dout3&lt;/div>
+            &lt;div class=&quot;scr-cell out&quot;>Dout4&lt;/div>
+            &lt;div class=&quot;scr-cell out&quot;>Dout5&lt;/div>
+            &lt;div class=&quot;scr-cell out&quot;>Dout6&lt;/div>
+          &lt;/div>
+        &lt;/div>
+      &lt;/div>
+
+      &lt;div class=&quot;timeline&quot;>
+        &lt;div class=&quot;packet-row&quot;>
+          &lt;div class=&quot;packet-label&quot;>Before ENC&lt;/div>
+          &lt;div class=&quot;packet-line&quot;>
+            &lt;span class=&quot;pkt note&quot;>K1&lt;/span>
+            &lt;span class=&quot;pkt data&quot;>CTRL_L / RGB Data&lt;/span>
+            &lt;span class=&quot;pkt note&quot;>K2&lt;/span>
+            &lt;span class=&quot;pkt hbp&quot;>HBP&lt;/span>
+          &lt;/div>
+        &lt;/div>
+        &lt;div class=&quot;packet-row&quot;>
+          &lt;div class=&quot;packet-label&quot;>After ENC&lt;/div>
+          &lt;div class=&quot;packet-line&quot;>
+            &lt;span class=&quot;pkt note&quot;>K1&lt;/span>
+            &lt;span class=&quot;pkt enc&quot;>Enc Data&lt;/span>
+            &lt;span class=&quot;pkt dummy&quot;>Dmy&lt;/span>
+            &lt;span class=&quot;pkt note&quot;>K2&lt;/span>
+            &lt;span class=&quot;pkt note&quot;>K5&lt;/span>
+            &lt;span class=&quot;pkt note&quot;>K6&lt;/span>
+            &lt;span class=&quot;pkt note&quot;>K7&lt;/span>
+            &lt;span class=&quot;pkt note&quot;>K8&lt;/span>
+          &lt;/div>
+        &lt;/div>
+      &lt;/div>
+
+      &lt;div class=&quot;format&quot;>
+        &lt;div class=&quot;format-line&quot;>
+          &lt;strong>K 碼&lt;/strong>
+          &lt;span>K 碼不加擾；K 碼期間 scramble 停止滾動。&lt;/span>
+        &lt;/div>
+        &lt;div class=&quot;format-line&quot;>
+          &lt;strong>n+1 行&lt;/strong>
+          &lt;span>下一行 scramble 開始狀態要承接 n 行 scramble 截止狀態。&lt;/span>
+        &lt;/div>
+      &lt;/div>
+
+      &lt;table class=&quot;rule-table&quot;>
+        &lt;thead>
+          &lt;tr>
+            &lt;th>ITEM&lt;/th>
+            &lt;th>SCR_KEY update&lt;/th>
+            &lt;th>SCR_XOR&lt;/th>
+            &lt;th>413/420 ENC&lt;/th>
+          &lt;/tr>
+        &lt;/thead>
+        &lt;tbody>
+          &lt;tr>
+            &lt;td>DATA&lt;/td>
+            &lt;td>√&lt;/td>
+            &lt;td>√&lt;/td>
+            &lt;td>√&lt;/td>
+          &lt;/tr>
+          &lt;tr>
+            &lt;td>LSP&lt;/td>
+            &lt;td>×&lt;/td>
+            &lt;td>×&lt;/td>
+            &lt;td>√&lt;/td>
+          &lt;/tr>
+          &lt;tr>
+            &lt;td>K1 ~ K4&lt;/td>
+            &lt;td>×&lt;/td>
+            &lt;td>×&lt;/td>
+            &lt;td>×&lt;/td>
+          &lt;/tr>
+          &lt;tr>
+            &lt;td>CT&lt;/td>
+            &lt;td>×&lt;/td>
+            &lt;td>×&lt;/td>
+            &lt;td>×&lt;/td>
+          &lt;/tr>
+          &lt;tr>
+            &lt;td>CTRL_F&lt;/td>
+            &lt;td>×&lt;/td>
+            &lt;td>×&lt;/td>
+            &lt;td>√&lt;/td>
+          &lt;/tr>
+          &lt;tr>
+            &lt;td>CTRL_L&lt;/td>
+            &lt;td>√&lt;/td>
+            &lt;td>√&lt;/td>
+            &lt;td>√&lt;/td>
+          &lt;/tr>
+        &lt;/tbody>
+      &lt;/table>
+    &lt;/section>
+
+    &lt;section class=&quot;panel&quot;>
+      &lt;div class=&quot;panel-title&quot;>413b/420b Encode / Decode Verilog&lt;/div>
+      &lt;div class=&quot;verilog-grid&quot;>
+        &lt;div class=&quot;code-box&quot;>module group_label_413b420b_encoder (
+  input  wire         prev_bit,
+  input  wire [412:0] din,
+  output reg  [419:0] dout,
+  output reg          replace_en,
+  output reg  [5:0]   label
+);
+  integer i;
+  reg [6:0] group_in [0:58];
+  reg [6:0] group_out;
+  reg [63:0] used_prefix;
+  reg found_label;
+  wire h;
+
+  assign h = ~prev_bit;
+
+  always @* begin
+    used_prefix = 64&#39;d0;
+    replace_en  = 1&#39;b0;
+
+    for (i = 0; i &amp;lt; 59; i = i + 1) begin
+      group_in[i] = din[412 - i*7 -: 7];
+      used_prefix[group_in[i][6:1]] = 1&#39;b1;
+
+      if ((group_in[i] == 7&#39;b0000000) ||
+          (group_in[i] == 7&#39;b1111111)) begin
+        replace_en = 1&#39;b1;
+      end
+    end
+
+    // label=000000 is reserved for no-replace header when H=1.
+    label = 6&#39;d1;
+    found_label = 1&#39;b0;
+    for (i = 1; i &amp;lt; 64; i = i + 1) begin
+      if (!found_label &amp;&amp; !used_prefix[i]) begin
+        label = i[5:0];
+        found_label = 1&#39;b1;
+      end
+    end
+
+    // Header: replacement = H + Label; no-replace = H + 6 bits of ~H.
+    dout[419 -: 7] = replace_en ? {h, label} : {h, {6{~h}}};
+
+    for (i = 0; i &amp;lt; 59; i = i + 1) begin
+      if (replace_en &amp;&amp; (group_in[i] == 7&#39;b0000000)) begin
+        group_out = {label, 1&#39;b0};
+      end else if (replace_en &amp;&amp; (group_in[i] == 7&#39;b1111111)) begin
+        group_out = {label, 1&#39;b1};
+      end else begin
+        group_out = group_in[i];
+      end
+
+      dout[412 - i*7 -: 7] = group_out;
+    end
+  end
+endmodule&lt;/div>
+
+        &lt;div class=&quot;code-box&quot;>module group_label_420b413b_decoder (
+  input  wire [419:0] din,
+  output reg  [412:0] dout,
+  output wire         replace_en,
+  output wire [5:0]   label
+);
+  integer i;
+  reg [6:0] group_in;
+  reg [6:0] group_out;
+  wire [6:0] header;
+
+  assign header = din[419 -: 7];
+  assign replace_en = (header[5:0] != {6{~header[6]}});
+  assign label = header[5:0];
+
+  always @* begin
+    for (i = 0; i &amp;lt; 59; i = i + 1) begin
+      group_in = din[412 - i*7 -: 7];
+
+      if (replace_en &amp;&amp; (group_in[6:1] == label)) begin
+        // flag=0 restores all-0; flag=1 restores all-1.
+        group_out = group_in[0] ? 7&#39;b1111111 : 7&#39;b0000000;
+      end else begin
+        group_out = group_in;
+      end
+
+      dout[412 - i*7 -: 7] = group_out;
+    end
+  end
+endmodule&lt;/div>
+      &lt;/div>
+      &lt;div class=&quot;verilog-note&quot;>
+        範例假設 bit order 為 MSB-first：&lt;code>din[412 - i*7 -: 7]&lt;/code> 是第 i 組 7b。
+        Header 使用 &lt;code>H+Label&lt;/code>，其中 &lt;code>H=~prev_bit&lt;/code>。
+        若完全沒有替換，header 使用 &lt;code>H+6個~H&lt;/code>，Decoder 看到這種型態就知道 data 直接通過。
+      &lt;/div>
+    &lt;/section>
+  &lt;/main>
+  &lt;script>
+    (function () {
+      document.querySelectorAll(&quot;.panel-title&quot;).forEach(function (title) {
+        if (title.textContent.indexOf(&quot;Verilog&quot;) !== -1) {
+          var panel = title.closest(&quot;.panel&quot;);
+          if (panel) panel.remove();
+        }
+      });
+
+      if (window.self === window.top) return;
+      var style = document.createElement(&quot;style&quot;);
+      style.textContent = &quot;.page-tabs{display:none!important}&quot;;
+      document.head.appendChild(style);
+    })();
+  &lt;/script>
+&lt;/body>
+&lt;/html>
+"></iframe>
+    </section>
+
+    <section class="page-view" data-view="real" hidden>
+      <iframe class="embedded-frame" title="Real Case" srcdoc="&lt;!doctype html>
+&lt;html lang=&quot;zh-Hant&quot;>
+&lt;head>
+  &lt;meta charset=&quot;utf-8&quot;>
+  &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
+  &lt;title>413B/420B Real Case&lt;/title>
+  &lt;style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f6f8;
+      --ink: #16181d;
+      --muted: #69707d;
+      --line: #d3dae5;
+      --panel: #ffffff;
+      --blue: #164fd1;
+      --blue-soft: #eaf2ff;
+      --green: #137a3a;
+      --green-soft: #e7f6ec;
+      --amber: #9a5b00;
+      --amber-soft: #fff3d8;
+      --red: #b42318;
+      --red-soft: #fde8e7;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: &quot;Segoe UI&quot;, Arial, &quot;Microsoft JhengHei&quot;, sans-serif;
+    }
+
+    main {
+      display: grid;
+      gap: 14px;
+      max-width: 1500px;
+      margin: 0 auto;
+      padding: 18px;
+    }
+
+    header,
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 10px 26px rgba(15, 23, 42, 0.07);
+    }
+
+    header {
+      display: grid;
+      gap: 8px;
+      padding: 16px;
+    }
+
+    .page-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 10px 26px rgba(15, 23, 42, 0.07);
+    }
+
+    .page-tabs a {
+      min-width: 116px;
+      padding: 8px 12px;
+      border: 1px solid #b7bfcc;
+      border-radius: 7px;
+      background: #fff;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 750;
+      text-align: center;
+      text-decoration: none;
+    }
+
+    .page-tabs a.active {
+      border-color: var(--blue);
+      background: var(--blue);
+      color: #fff;
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--blue);
+      font-size: 28px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      color: var(--ink);
+      font-size: 16px;
+      line-height: 1.45;
+    }
+
+    .blue {
+      color: #001eff;
+      font-weight: 800;
+    }
+
+    code,
+    .mono {
+      font-family: Consolas, &quot;Courier New&quot;, monospace;
+    }
+
+    .assumptions {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(170px, 1fr));
+      gap: 8px;
+    }
+
+    .chip {
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fbfcfe;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .panel-title {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      font-size: 17px;
+      font-weight: 800;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(130px, 1fr));
+      gap: 10px;
+      padding: 14px;
+    }
+
+    .node {
+      position: relative;
+      display: grid;
+      align-content: start;
+      gap: 6px;
+      min-height: 112px;
+      padding: 11px;
+      border: 2px solid #a8b2c2;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .node::after {
+      content: &quot;&quot;;
+      position: absolute;
+      top: 50%;
+      right: -18px;
+      width: 24px;
+      height: 2px;
+      background: #1f2937;
+      transform: translateY(-50%);
+      z-index: 2;
+    }
+
+    .node::before {
+      content: &quot;&quot;;
+      position: absolute;
+      top: calc(50% - 5px);
+      right: -20px;
+      border-left: 9px solid #1f2937;
+      border-top: 6px solid transparent;
+      border-bottom: 6px solid transparent;
+      z-index: 3;
+    }
+
+    .node:last-child::before,
+    .node:last-child::after {
+      display: none;
+    }
+
+    .node h2 {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    .node p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .bluebox {
+      border-color: #7aa7ff;
+      background: var(--blue-soft);
+    }
+
+    .greenbox {
+      border-color: #7bc99a;
+      background: var(--green-soft);
+    }
+
+    .amberbox {
+      border-color: #edc266;
+      background: var(--amber-soft);
+    }
+
+    .redbox {
+      border-color: #f3a49f;
+      background: var(--red-soft);
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(230px, 1fr));
+      gap: 10px;
+      padding: 14px;
+    }
+
+    .case-card {
+      display: grid;
+      gap: 9px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+    }
+
+    .case-card h3 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    .metric {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 1px solid #edf0f5;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .metric strong {
+      color: var(--ink);
+      font-family: Consolas, &quot;Courier New&quot;, monospace;
+      white-space: nowrap;
+    }
+
+    .metric.pass strong {
+      color: var(--green);
+    }
+
+    .metric.warn strong {
+      color: var(--amber);
+    }
+
+    .tables {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 14px;
+      padding: 14px;
+    }
+
+    .table-wrap {
+      min-width: 0;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      max-height: 520px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 12px;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      padding: 7px 6px;
+      background: #eef1f6;
+      border-bottom: 1px solid var(--line);
+      color: #303744;
+      text-align: center;
+    }
+
+    td {
+      padding: 6px;
+      border-bottom: 1px solid #edf0f5;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #fbfcfe;
+    }
+
+    .need {
+      color: var(--amber);
+      font-weight: 800;
+    }
+
+    .no-need {
+      color: var(--green);
+      font-weight: 800;
+    }
+
+    .note {
+      padding: 0 14px 14px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .output-panel {
+      display: grid;
+      gap: 8px;
+      padding: 0 14px 14px;
+    }
+
+    .zero-demo {
+      display: grid;
+      gap: 12px;
+      padding: 14px;
+    }
+
+    .zero-row {
+      display: grid;
+      grid-template-columns: 132px 1fr;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .zero-label {
+      padding: 8px 10px;
+      border: 1px solid #55739f;
+      border-radius: 6px;
+      background: #f8fbff;
+      font-size: 13px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .group-stream {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .g7 {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 70px;
+      height: 28px;
+      padding: 0 6px;
+      border: 1px solid #1f2937;
+      border-radius: 5px;
+      background: #fff;
+      font-family: Consolas, &quot;Courier New&quot;, monospace;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .g7.header {
+      border-color: #8b79b7;
+      background: #eee9ff;
+    }
+
+    .g7.replace {
+      border-color: #d9a636;
+      background: #fff4c8;
+    }
+
+    .g7.flag {
+      border-color: #ef8d8d;
+      background: #ffdede;
+    }
+
+    .bit-red {
+      color: var(--red);
+      font-weight: 900;
+    }
+
+    .formula-line-demo {
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+      font-size: 15px;
+      line-height: 1.55;
+    }
+
+    .output-title {
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 170px;
+      resize: vertical;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+      color: var(--ink);
+      font-family: Consolas, &quot;Courier New&quot;, monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .select-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 14px 14px 0;
+    }
+
+    button {
+      min-width: 92px;
+      height: 34px;
+      border: 1px solid #b7bfcc;
+      border-radius: 7px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    button.active {
+      border-color: var(--blue);
+      background: var(--blue);
+      color: #fff;
+      font-weight: 750;
+    }
+
+    @media (max-width: 1100px) {
+      .assumptions,
+      .flow,
+      .summary-grid,
+      .tables,
+      .zero-row {
+        grid-template-columns: 1fr;
+      }
+
+      .node::before,
+      .node::after {
+        display: none;
+      }
+    }
+  &lt;/style>
+&lt;/head>
+&lt;body>
+  &lt;main>
+    &lt;nav class=&quot;page-tabs&quot; aria-label=&quot;page selector&quot;>
+      &lt;a href=&quot;group_label_replace_flowchart.html&quot;>流程說明&lt;/a>
+      &lt;a class=&quot;active&quot; href=&quot;group_label_real_case.html&quot;>Real Case&lt;/a>
+    &lt;/nav>
+
+    &lt;header>
+      &lt;h1>413B/420B Real Case：Video Data 區 Encode 結果&lt;/h1>
+      &lt;div class=&quot;subtitle&quot;>
+        K 碼先不計，只看資料區：每組 case 為 &lt;span class=&quot;blue&quot;>2880 Byte&lt;/span> video data
+        加上 &lt;span class=&quot;blue&quot;>120 Byte&lt;/span> 資料 0 / Dmy(0)，合計 &lt;span class=&quot;blue&quot;>3000 Byte = 24000 bit&lt;/span>。
+      &lt;/div>
+      &lt;div class=&quot;assumptions&quot;>
+        &lt;div class=&quot;chip&quot;>Byte 轉 bit：MSB first&lt;/div>
+        &lt;div class=&quot;chip&quot;>補位：補 0 到 413b 整數倍&lt;/div>
+        &lt;div class=&quot;chip&quot;>SCR reset：先以 &lt;code>lfsr_q[15:9]=7&#39;h7F&lt;/code> 計算&lt;/div>
+        &lt;div class=&quot;chip&quot;>random case：使用固定 seed 產生，實際 random 需代入原始 byte&lt;/div>
+      &lt;/div>
+    &lt;/header>
+
+    &lt;section class=&quot;panel&quot;>
+      &lt;div class=&quot;panel-title&quot;>資料流表達方式&lt;/div>
+      &lt;div class=&quot;flow&quot;>
+        &lt;section class=&quot;node bluebox&quot;>
+          &lt;h2>1. Video payload&lt;/h2>
+          &lt;p>&lt;code>2880 Byte data + 120 Byte 0&lt;/code>&lt;/p>
+          &lt;p>總長 &lt;code>24000 bit&lt;/code>&lt;/p>
+        &lt;/section>
+        &lt;section class=&quot;node amberbox&quot;>
+          &lt;h2>2. 補 413b 整數倍&lt;/h2>
+          &lt;p>&lt;code>ceil(24000 / 413) = 59&lt;/code> blocks&lt;/p>
+          &lt;p>補 &lt;code>24367 - 24000 = 367 bit&lt;/code>&lt;/p>
+        &lt;/section>
+        &lt;section class=&quot;node greenbox&quot;>
+          &lt;h2>3. SCR_XOR&lt;/h2>
+          &lt;p>每 7bit data 與 SCR key XOR。&lt;/p>
+          &lt;p>K 碼不參與。&lt;/p>
+        &lt;/section>
+        &lt;section class=&quot;node&quot;>
+          &lt;h2>4. 切 59 組&lt;/h2>
+          &lt;p>每個 413b block 切成 &lt;code>59 × 7b&lt;/code> groups。&lt;/p>
+        &lt;/section>
+        &lt;section class=&quot;node redbox&quot;>
+          &lt;h2>5. Label replace&lt;/h2>
+          &lt;p>若 7b group 為全 0 或全 1，以 &lt;code>6b label + 1b flag&lt;/code> 取代。&lt;/p>
+        &lt;/section>
+        &lt;section class=&quot;node bluebox&quot;>
+          &lt;h2>6. 輸出&lt;/h2>
+          &lt;p>&lt;code>59 × 420b = 24780 bit&lt;/code>&lt;/p>
+          &lt;p>&lt;code>24780 / 70 = 354&lt;/code> 個 70b chunk&lt;/p>
+        &lt;/section>
+      &lt;/div>
+    &lt;/section>
+
+    &lt;section class=&quot;panel&quot;>
+      &lt;div class=&quot;panel-title&quot;>單一 413b Block 如何變成 420b&lt;/div>
+      &lt;div class=&quot;zero-demo&quot;>
+        &lt;div class=&quot;select-row&quot; id=&quot;singleButtons&quot; style=&quot;padding:0;&quot;>&lt;/div>
+
+        &lt;div class=&quot;formula-line-demo&quot; id=&quot;singleIntro&quot;>
+          原始 &lt;span class=&quot;blue&quot;>413b 全 0&lt;/span> = &lt;code>59 × 7b&lt;/code>，
+          所以每一組都是 &lt;code>0000000&lt;/code>。這時所有 group 的前 6b 都是
+          &lt;code>000000&lt;/code>，因此可以挑一個沒有出現過的 6b label，例如
+          &lt;span class=&quot;blue mono&quot;>000001&lt;/span>。
+        &lt;/div>
+
+        &lt;div class=&quot;zero-row&quot;>
+          &lt;div class=&quot;zero-label&quot;>Input 413b&lt;/div>
+          &lt;div class=&quot;group-stream&quot; id=&quot;singleInput&quot;>&lt;/div>
+        &lt;/div>
+
+        &lt;div class=&quot;formula-line-demo&quot; id=&quot;singleHeader&quot;>
+          Header 佔 7b：&lt;code>T + label&lt;/code>。其中 &lt;code>T&lt;/code> 是 1b 跳變沿，
+          這裡先用 &lt;code>T=1&lt;/code> 表示，所以 header 為
+          &lt;span class=&quot;blue mono&quot;>&lt;span class=&quot;bit-red&quot;>1&lt;/span>_00000&lt;span class=&quot;bit-red&quot;>1&lt;/span> = &lt;span class=&quot;bit-red&quot;>1&lt;/span>00000&lt;span class=&quot;bit-red&quot;>1&lt;/span>&lt;/span>。
+        &lt;/div>
+
+        &lt;div class=&quot;formula-line-demo&quot; id=&quot;singleReplace&quot;>
+          每個全 0 group 用 &lt;code>label + flag&lt;/code> 取代。
+          全 0 的 flag 為 &lt;code>0&lt;/code>，所以每一組
+          &lt;code>0000000&lt;/code> 會變成
+          &lt;span class=&quot;blue mono&quot;>00000&lt;span class=&quot;bit-red&quot;>1&lt;/span>_0 = 00000&lt;span class=&quot;bit-red&quot;>1&lt;/span>0&lt;/span>。
+        &lt;/div>
+
+        &lt;div class=&quot;zero-row&quot;>
+          &lt;div class=&quot;zero-label&quot;>Output 420b&lt;/div>
+          &lt;div class=&quot;group-stream&quot; id=&quot;singleOutput&quot;>&lt;/div>
+        &lt;/div>
+
+        &lt;div class=&quot;formula-line-demo&quot; id=&quot;singleSummary&quot;>
+          因此這個 block 的 420b 結果可以寫成：
+          &lt;br>
+          &lt;span class=&quot;blue mono&quot;>&lt;span class=&quot;bit-red&quot;>1&lt;/span>00000&lt;span class=&quot;bit-red&quot;>1&lt;/span> + 59 × 00000&lt;span class=&quot;bit-red&quot;>1&lt;/span>0&lt;/span>
+          &lt;br>
+          長度就是 &lt;code>1 header group + 59 data groups = 60 × 7b = 420b&lt;/code>。
+        &lt;/div>
+      &lt;/div>
+    &lt;/section>
+
+    &lt;section class=&quot;panel&quot;>
+      &lt;div class=&quot;panel-title&quot;>五種 Pattern 總結&lt;/div>
+      &lt;div class=&quot;summary-grid&quot; id=&quot;summaryGrid&quot;>&lt;/div>
+      &lt;div class=&quot;note&quot;>
+        下方卡片以「SCR_XOR 後再做 413/420」為主結果；卡片中的 RAW 只是比較用，表示如果完全不加擾直接做 label replace，會替換多少個 7b group。
+      &lt;/div>
+    &lt;/section>
+
+    &lt;section class=&quot;panel&quot;>
+      &lt;div class=&quot;panel-title&quot;>每個 413b Block 明細&lt;/div>
+      &lt;div class=&quot;select-row&quot; id=&quot;caseButtons&quot;>&lt;/div>
+      &lt;div class=&quot;tables&quot;>
+        &lt;div>
+          &lt;div class=&quot;panel-title&quot;>SCR_XOR + 413/420 ENC&lt;/div>
+          &lt;div class=&quot;table-wrap&quot;>
+            &lt;table>
+              &lt;thead>
+                &lt;tr>
+                  &lt;th style=&quot;width:54px;&quot;>Blk&lt;/th>
+                  &lt;th style=&quot;width:70px;&quot;>Need&lt;/th>
+                  &lt;th style=&quot;width:70px;&quot;>Label&lt;/th>
+                  &lt;th style=&quot;width:78px;&quot;>Replace&lt;/th>
+                  &lt;th>First 12 encoded 7b groups&lt;/th>
+                &lt;/tr>
+              &lt;/thead>
+              &lt;tbody id=&quot;scrTable&quot;>&lt;/tbody>
+            &lt;/table>
+          &lt;/div>
+        &lt;/div>
+        &lt;div>
+          &lt;div class=&quot;panel-title&quot;>RAW 直接 413/420 比較&lt;/div>
+          &lt;div class=&quot;table-wrap&quot;>
+            &lt;table>
+              &lt;thead>
+                &lt;tr>
+                  &lt;th style=&quot;width:54px;&quot;>Blk&lt;/th>
+                  &lt;th style=&quot;width:70px;&quot;>Need&lt;/th>
+                  &lt;th style=&quot;width:70px;&quot;>Label&lt;/th>
+                  &lt;th style=&quot;width:78px;&quot;>Replace&lt;/th>
+                  &lt;th>First 12 encoded 7b groups&lt;/th>
+                &lt;/tr>
+              &lt;/thead>
+              &lt;tbody id=&quot;rawTable&quot;>&lt;/tbody>
+            &lt;/table>
+          &lt;/div>
+        &lt;/div>
+      &lt;/div>
+      &lt;div class=&quot;note&quot;>
+        7b group 以二進位顯示。Need=YES 表示該 413b block 裡有全 0 或全 1 group，因此要啟用 label replacement。
+      &lt;/div>
+      &lt;div class=&quot;output-panel&quot;>
+        &lt;div class=&quot;output-title&quot;>完整 SCR_XOR + 413/420 encoded stream（3540 個 7b group）&lt;/div>
+        &lt;textarea id=&quot;fullOutput&quot; spellcheck=&quot;false&quot; readonly>&lt;/textarea>
+      &lt;/div>
+    &lt;/section>
+  &lt;/main>
+
+  &lt;script>
+    &quot;use strict&quot;;
+
+    const CASE_ORDER = [&quot;0x00&quot;, &quot;0x01&quot;, &quot;0xFE&quot;, &quot;0xFF&quot;, &quot;random&quot;];
+
+    function bitsFromBytes(bytes) {
+      const bits = [];
+      for (const value of bytes) {
+        for (let bit = 7; bit >= 0; bit--) bits.push((value >> bit) &amp; 1);
+      }
+      return bits;
+    }
+
+    function groupsFromBits(bits) {
+      const groups = [];
+      for (let i = 0; i &lt; bits.length; i += 7) {
+        let value = 0;
+        for (let j = 0; j &lt; 7; j++) value = (value &lt;&lt; 1) | bits[i + j];
+        groups.push(value);
+      }
+      return groups;
+    }
+
+    function lfsrNext(q) {
+      const b = (index) => (q >> index) &amp; 1;
+      const c = new Array(16).fill(0);
+      c[0] = b(9);
+      c[1] = b(10);
+      c[2] = b(11);
+      c[3] = b(12) ^ b(9);
+      c[4] = b(13) ^ b(10) ^ b(9);
+      c[5] = b(14) ^ b(11) ^ b(10) ^ b(9);
+      c[6] = b(15) ^ b(12) ^ b(11) ^ b(10);
+      c[7] = b(0) ^ b(13) ^ b(12) ^ b(11);
+      c[8] = b(1) ^ b(14) ^ b(13) ^ b(12);
+      c[9] = b(2) ^ b(15) ^ b(14) ^ b(13);
+      c[10] = b(3) ^ b(15) ^ b(14);
+      c[11] = b(4) ^ b(15);
+      c[12] = b(5);
+      c[13] = b(6);
+      c[14] = b(7);
+      c[15] = b(8);
+      return c.reduce((acc, bit, index) => acc | (bit &lt;&lt; index), 0);
+    }
+
+    function scrambleGroups(groups) {
+      let q = 0xfe00;
+      return groups.map((group) => {
+        let key = 0;
+        for (let i = 0; i &lt; 7; i++) key = (key &lt;&lt; 1) | ((q >> (9 + i)) &amp; 1);
+        const out = group ^ key;
+        q = lfsrNext(q);
+        return out;
+      });
+    }
+
+    function encodeBlock(groups59) {
+      const prefixes = new Set(groups59.map((group) => (group >> 1) &amp; 0x3f));
+      const need = groups59.some((group) => group === 0 || group === 0x7f);
+      let label = need ? 1 : 0;
+      while (prefixes.has(label)) label++;
+      const encoded = [need ? (0x40 | label) : 0x40];
+      let replaced = 0;
+
+      for (const group of groups59) {
+        if (need &amp;&amp; group === 0) {
+          encoded.push((label &lt;&lt; 1) | 0);
+          replaced++;
+        } else if (need &amp;&amp; group === 0x7f) {
+          encoded.push((label &lt;&lt; 1) | 1);
+          replaced++;
+        } else {
+          encoded.push(group);
+        }
+      }
+
+      return { need, label, replaced, encoded };
+    }
+
+    function process(bytes, useScramble) {
+      const bits = bitsFromBytes(bytes);
+      const originalBits = bits.length;
+      const padBits = (413 - (originalBits % 413)) % 413;
+      bits.push(...new Array(padBits).fill(0));
+      let groups = groupsFromBits(bits);
+      if (useScramble) groups = scrambleGroups(groups);
+
+      const blocks = [];
+      for (let i = 0; i &lt; groups.length; i += 59) {
+        blocks.push(encodeBlock(groups.slice(i, i + 59)));
+      }
+
+      return {
+        originalBits,
+        padBits,
+        inputBitsAfterPad: bits.length,
+        blockCount: blocks.length,
+        outputBits: blocks.length * 420,
+        chunks70b: blocks.length * 6,
+        totalReplaced: blocks.reduce((sum, block) => sum + block.replaced, 0),
+        needBlocks: blocks.filter((block) => block.need).length,
+        blocks
+      };
+    }
+
+    function lcg(seed) {
+      let state = seed >>> 0;
+      return () => {
+        state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+        return (state >>> 24) &amp; 0xff;
+      };
+    }
+
+    function buildCases() {
+      const random = lcg(20260606);
+      return {
+        &quot;0x00&quot;: [...new Array(2880).fill(0x00), ...new Array(120).fill(0)],
+        &quot;0x01&quot;: [...new Array(2880).fill(0x01), ...new Array(120).fill(0)],
+        &quot;0xFE&quot;: [...new Array(2880).fill(0xfe), ...new Array(120).fill(0)],
+        &quot;0xFF&quot;: [...new Array(2880).fill(0xff), ...new Array(120).fill(0)],
+        random: [...Array.from({ length: 2880 }, () => random()), ...new Array(120).fill(0)]
+      };
+    }
+
+    const SINGLE_CASES = [
+      { id: &quot;00&quot;, label: &quot;全 00&quot;, type: &quot;all&quot;, bit: 0, desc: &quot;413b 全 0&quot; },
+      { id: &quot;ff&quot;, label: &quot;全 FF&quot;, type: &quot;all&quot;, bit: 1, desc: &quot;413b 全 1&quot; },
+      { id: &quot;f0&quot;, label: &quot;資料 F0&quot;, type: &quot;byte&quot;, value: 0xf0, desc: &quot;0xF0 byte pattern 重複填滿 413b&quot; },
+      { id: &quot;05&quot;, label: &quot;資料 05&quot;, type: &quot;byte&quot;, value: 0x05, desc: &quot;0x05 byte pattern 重複填滿 413b&quot; },
+      { id: &quot;01&quot;, label: &quot;資料 01&quot;, type: &quot;byte&quot;, value: 0x01, desc: &quot;0x01 byte pattern 重複填滿 413b&quot; }
+    ];
+
+    function singleBits(spec) {
+      if (spec.type === &quot;all&quot;) return new Array(413).fill(spec.bit);
+      const bits = [];
+      while (bits.length &lt; 413) {
+        for (let bit = 7; bit >= 0 &amp;&amp; bits.length &lt; 413; bit--) {
+          bits.push((spec.value >> bit) &amp; 1);
+        }
+      }
+      return bits;
+    }
+
+    function singleEncode(groups) {
+      const prefixes = new Set(groups.map((group) => (group >> 1) &amp; 0x3f));
+      const need = groups.some((group) => group === 0 || group === 0x7f);
+      let label = need ? 1 : 0;
+      while (prefixes.has(label)) label++;
+      const header = need ? (0x40 | label) : 0x40;
+      const encoded = [header];
+      const replacedFrom = [];
+      const replacedTo = [];
+
+      for (const group of groups) {
+        if (need &amp;&amp; group === 0) {
+          const next = (label &lt;&lt; 1) | 0;
+          encoded.push(next);
+          replacedFrom.push(group);
+          replacedTo.push(next);
+        } else if (need &amp;&amp; group === 0x7f) {
+          const next = (label &lt;&lt; 1) | 1;
+          encoded.push(next);
+          replacedFrom.push(group);
+          replacedTo.push(next);
+        } else {
+          encoded.push(group);
+        }
+      }
+
+      return { need, label, header, encoded, replacedFrom, replacedTo };
+    }
+
+    function redDiffBits(value, baseValue = null, width = 7) {
+      const text = value.toString(2).padStart(width, &quot;0&quot;);
+      const base = baseValue === null ? null : baseValue.toString(2).padStart(width, &quot;0&quot;);
+      return text.split(&quot;&quot;).map((bit, index) => {
+        const changed = base ? bit !== base[index] : bit === &quot;1&quot;;
+        return changed ? `&lt;span class=&quot;bit-red&quot;>${bit}&lt;/span>` : bit;
+      }).join(&quot;&quot;);
+    }
+
+    function groupSample(groups, renderFn) {
+      const sample = [0, 1, 2, &quot;dots&quot;, groups.length - 2, groups.length - 1];
+      return sample.map((item) => {
+        if (item === &quot;dots&quot;) return `&lt;span class=&quot;g7&quot;>...&lt;/span>`;
+        return renderFn(groups[item], item);
+      }).join(&quot;&quot;);
+    }
+
+    function uniquePrefixes(groups) {
+      return Array.from(new Set(groups.map((group) => ((group >> 1) &amp; 0x3f).toString(2).padStart(6, &quot;0&quot;))));
+    }
+
+    function renderSingleCase(spec) {
+      const bits = singleBits(spec);
+      const groups = groupsFromBits(bits);
+      const encoded = singleEncode(groups);
+      const labelBits = encoded.label.toString(2).padStart(6, &quot;0&quot;);
+      const headerBits = encoded.header.toString(2).padStart(7, &quot;0&quot;);
+      const prefixes = uniquePrefixes(groups);
+      const firstReplaceFrom = encoded.replacedFrom[0];
+      const firstReplaceTo = encoded.replacedTo[0];
+      const replaceCount = encoded.replacedFrom.length;
+
+      document.getElementById(&quot;singleIntro&quot;).innerHTML = `
+        原始 &lt;span class=&quot;blue&quot;>${spec.desc}&lt;/span> = &lt;code>59 × 7b&lt;/code>。
+        這個 block 出現的前 6b 樣式共有 &lt;span class=&quot;blue&quot;>${prefixes.length}&lt;/span> 種：
+        &lt;span class=&quot;mono&quot;>${prefixes.slice(0, 10).join(&quot; &quot;)}&lt;/span>${prefixes.length > 10 ? &quot; ...&quot; : &quot;&quot;}。
+        因此選一個沒有出現過的 6b label：
+        &lt;span class=&quot;blue mono&quot;>${labelBits}&lt;/span>。
+      `;
+
+      document.getElementById(&quot;singleInput&quot;).innerHTML = groupSample(groups, (group) => {
+        return `&lt;span class=&quot;g7&quot;>${bin7(group)}&lt;/span>`;
+      });
+
+      if (encoded.need) {
+        document.getElementById(&quot;singleHeader&quot;).innerHTML = `
+          Header 佔 7b：&lt;code>T + label&lt;/code>。這裡先用 &lt;code>T=1&lt;/code>，
+          所以 header 為
+          &lt;span class=&quot;blue mono&quot;>${redDiffBits(encoded.header)}&lt;/span>。
+        `;
+        document.getElementById(&quot;singleReplace&quot;).innerHTML = `
+          這個 block 需要替換，共有 &lt;span class=&quot;blue&quot;>${replaceCount}&lt;/span> 個全 0 / 全 1 group。
+          第一個替換例子：
+          &lt;span class=&quot;mono&quot;>${bin7(firstReplaceFrom)}&lt;/span>
+          變成
+          &lt;span class=&quot;blue mono&quot;>${redDiffBits(firstReplaceTo, firstReplaceFrom)}&lt;/span>。
+        `;
+      } else {
+        document.getElementById(&quot;singleHeader&quot;).innerHTML = `
+          這個 block 沒有全 0 或全 1 group，不需要 label replacement。
+          Header 使用 no-code 表示：
+          &lt;span class=&quot;blue mono&quot;>${redDiffBits(encoded.header)}&lt;/span>。
+        `;
+        document.getElementById(&quot;singleReplace&quot;).innerHTML = `
+          Data 59 組保持原樣，只是在最前面加上 1 個 7b header，
+          所以仍然是 &lt;code>1 header group + 59 data groups = 420b&lt;/code>。
+        `;
+      }
+
+      document.getElementById(&quot;singleOutput&quot;).innerHTML = [
+        `&lt;span class=&quot;g7 header&quot;>${redDiffBits(encoded.header)}&lt;/span>`,
+        groupSample(encoded.encoded.slice(1), (group, index) => {
+          const base = groups[index];
+          const cls = group === base ? &quot;g7&quot; : &quot;g7 replace&quot;;
+          return `&lt;span class=&quot;${cls}&quot;>${redDiffBits(group, base)}&lt;/span>`;
+        })
+      ].join(&quot;&quot;);
+
+      const compact = encoded.need &amp;&amp; replaceCount === 59
+        ? `${redDiffBits(encoded.header)} + 59 × ${redDiffBits(encoded.encoded[1], groups[0])}`
+        : `${redDiffBits(encoded.header)} + 59 data groups`;
+
+      document.getElementById(&quot;singleSummary&quot;).innerHTML = `
+        因此這個 block 的 420b 結果可以寫成：
+        &lt;br>
+        &lt;span class=&quot;blue mono&quot;>${compact}&lt;/span>
+        &lt;br>
+        長度是 &lt;code>1 header group + 59 data groups = 60 × 7b = 420b&lt;/code>。
+      `;
+    }
+
+    function initSingleCaseButtons() {
+      const wrap = document.getElementById(&quot;singleButtons&quot;);
+      for (const spec of SINGLE_CASES) {
+        const button = document.createElement(&quot;button&quot;);
+        button.type = &quot;button&quot;;
+        button.dataset.single = spec.id;
+        button.textContent = spec.label;
+        button.addEventListener(&quot;click&quot;, () => {
+          for (const item of wrap.querySelectorAll(&quot;button&quot;)) {
+            item.classList.toggle(&quot;active&quot;, item.dataset.single === spec.id);
+          }
+          renderSingleCase(spec);
+        });
+        wrap.appendChild(button);
+      }
+      wrap.querySelector(&quot;button&quot;).click();
+    }
+
+    function bin7(value) {
+      return value.toString(2).padStart(7, &quot;0&quot;);
+    }
+
+    const cases = buildCases();
+    const results = {};
+    for (const name of CASE_ORDER) {
+      results[name] = {
+        scr: process(cases[name], true),
+        raw: process(cases[name], false)
+      };
+    }
+
+    const summaryGrid = document.getElementById(&quot;summaryGrid&quot;);
+    for (const name of CASE_ORDER) {
+      const scr = results[name].scr;
+      const raw = results[name].raw;
+      const card = document.createElement(&quot;section&quot;);
+      card.className = &quot;case-card&quot;;
+      card.innerHTML = `
+        &lt;h3>${name}&lt;/h3>
+        &lt;div class=&quot;metric&quot;>&lt;span>Input&lt;/span>&lt;strong>3000 Byte&lt;/strong>&lt;/div>
+        &lt;div class=&quot;metric&quot;>&lt;span>Pad&lt;/span>&lt;strong>${scr.padBits} bit&lt;/strong>&lt;/div>
+        &lt;div class=&quot;metric pass&quot;>&lt;span>Blocks&lt;/span>&lt;strong>${scr.blockCount} × 413b&lt;/strong>&lt;/div>
+        &lt;div class=&quot;metric pass&quot;>&lt;span>Output&lt;/span>&lt;strong>${scr.outputBits} bit&lt;/strong>&lt;/div>
+        &lt;div class=&quot;metric pass&quot;>&lt;span>70b chunks&lt;/span>&lt;strong>${scr.chunks70b}&lt;/strong>&lt;/div>
+        &lt;div class=&quot;metric warn&quot;>&lt;span>SCR replace&lt;/span>&lt;strong>${scr.totalReplaced}&lt;/strong>&lt;/div>
+        &lt;div class=&quot;metric warn&quot;>&lt;span>SCR need blocks&lt;/span>&lt;strong>${scr.needBlocks}/${scr.blockCount}&lt;/strong>&lt;/div>
+        &lt;div class=&quot;metric&quot;>&lt;span>RAW replace&lt;/span>&lt;strong>${raw.totalReplaced}&lt;/strong>&lt;/div>
+      `;
+      summaryGrid.appendChild(card);
+    }
+
+    const caseButtons = document.getElementById(&quot;caseButtons&quot;);
+    const scrTable = document.getElementById(&quot;scrTable&quot;);
+    const rawTable = document.getElementById(&quot;rawTable&quot;);
+    const fullOutput = document.getElementById(&quot;fullOutput&quot;);
+
+    function renderRows(tbody, blocks) {
+      tbody.innerHTML = &quot;&quot;;
+      blocks.forEach((block, index) => {
+        const tr = document.createElement(&quot;tr&quot;);
+        tr.innerHTML = `
+          &lt;td>${index + 1}&lt;/td>
+          &lt;td class=&quot;${block.need ? &quot;need&quot; : &quot;no-need&quot;}&quot;>${block.need ? &quot;YES&quot; : &quot;NO&quot;}&lt;/td>
+          &lt;td>${block.label.toString(2).padStart(6, &quot;0&quot;)}&lt;/td>
+          &lt;td>${block.replaced}&lt;/td>
+          &lt;td class=&quot;mono&quot;>${block.encoded.slice(0, 12).map(bin7).join(&quot; &quot;)}&lt;/td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function setCase(name) {
+      for (const button of caseButtons.querySelectorAll(&quot;button&quot;)) {
+        button.classList.toggle(&quot;active&quot;, button.dataset.case === name);
+      }
+      renderRows(scrTable, results[name].scr.blocks);
+      renderRows(rawTable, results[name].raw.blocks);
+      fullOutput.value = results[name].scr.blocks
+        .map((block, index) => `BLK${String(index + 1).padStart(2, &quot;0&quot;)}: ${block.encoded.map(bin7).join(&quot; &quot;)}`)
+        .join(&quot;\\n&quot;);
+    }
+
+    for (const name of CASE_ORDER) {
+      const button = document.createElement(&quot;button&quot;);
+      button.type = &quot;button&quot;;
+      button.dataset.case = name;
+      button.textContent = name;
+      button.addEventListener(&quot;click&quot;, () => setCase(name));
+      caseButtons.appendChild(button);
+    }
+
+    setCase(CASE_ORDER[0]);
+    initSingleCaseButtons();
+  &lt;/script>
+  &lt;script>
+    (function () {
+      if (window.self === window.top) return;
+      var style = document.createElement(&quot;style&quot;);
+      style.textContent = &quot;.page-tabs{display:none!important}&quot;;
+      document.head.appendChild(style);
+    })();
+  &lt;/script>
+&lt;/body>
+&lt;/html>
+"></iframe>
+    </section>
+
+    <section class="page-view" data-view="logic" hidden>
+      <iframe class="embedded-frame" title="Decode電路邏輯&amp;Verilog" srcdoc="&lt;!doctype html>
+&lt;html lang=&quot;zh-Hant&quot;>
+&lt;head>
+  &lt;meta charset=&quot;utf-8&quot;>
+  &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
+  &lt;title>CHPI Decoder Buffer Flow&lt;/title>
+  &lt;style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f6f9;
+      --paper: #ffffff;
+      --ink: #111827;
+      --muted: #4b5565;
+      --line: #cbd5e1;
+      --blue: #1856c9;
+      --blue-soft: #e9f1ff;
+      --yellow: #9a6500;
+      --yellow-soft: #fff4d7;
+      --green: #0b7a43;
+      --green-soft: #e8f7ee;
+      --red: #b42318;
+      --red-soft: #ffe8e5;
+      --gray: #475467;
+      --gray-soft: #f7f9fc;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: &quot;Segoe UI&quot;, Arial, &quot;Microsoft JhengHei&quot;, sans-serif;
+    }
+
+    main {
+      max-width: 1560px;
+      margin: 0 auto;
+      padding: 18px;
+      display: grid;
+      gap: 14px;
+    }
+
+    header,
+    section {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.07);
+    }
+
+    header {
+      padding: 16px 18px;
+      display: grid;
+      gap: 8px;
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--blue);
+      font-size: 34px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      color: var(--muted);
+      font-size: 20px;
+      line-height: 1.45;
+    }
+
+    code {
+      color: var(--blue);
+      font-family: Consolas, &quot;Courier New&quot;, monospace;
+      font-weight: 850;
+    }
+
+    .title {
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--line);
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    .canvas {
+      overflow: auto;
+      padding: 8px;
+      background: #fbfcfe;
+    }
+
+    svg {
+      display: block;
+      width: 100%;
+      min-width: 1280px;
+      height: auto;
+      font-family: &quot;Segoe UI&quot;, Arial, &quot;Microsoft JhengHei&quot;, sans-serif;
+    }
+
+    .wire {
+      fill: none;
+      stroke: #1f2937;
+      stroke-width: 4;
+      marker-end: url(#arrow);
+    }
+
+    .bus {
+      fill: none;
+      stroke: var(--blue);
+      stroke-width: 6;
+      marker-end: url(#arrow-blue);
+    }
+
+    .block {
+      stroke-width: 3;
+      rx: 8;
+    }
+
+    .blue { fill: var(--blue-soft); stroke: var(--blue); }
+    .yellow { fill: var(--yellow-soft); stroke: var(--yellow); }
+    .green { fill: var(--green-soft); stroke: var(--green); }
+    .red { fill: var(--red-soft); stroke: var(--red); }
+    .gray { fill: var(--gray-soft); stroke: var(--gray); }
+
+    .blk-title {
+      fill: #111827;
+      font-size: 19px;
+      font-weight: 900;
+      text-anchor: middle;
+      dominant-baseline: middle;
+    }
+
+    .blk-sub {
+      fill: #465266;
+      font-size: 14px;
+      font-weight: 760;
+      text-anchor: middle;
+      dominant-baseline: middle;
+    }
+
+    .mini-title {
+      fill: #111827;
+      font-size: 15px;
+      font-weight: 900;
+      text-anchor: middle;
+      dominant-baseline: middle;
+    }
+
+    .mini-sub {
+      fill: #465266;
+      font-size: 12px;
+      font-weight: 760;
+      text-anchor: middle;
+      dominant-baseline: middle;
+    }
+
+    .label {
+      fill: #111827;
+      font-size: 15px;
+      font-weight: 850;
+      text-anchor: middle;
+    }
+
+    .top-label {
+      fill: var(--blue);
+      font-size: 18px;
+      font-weight: 950;
+      text-anchor: middle;
+    }
+
+    .mobile-flow {
+      display: none;
+    }
+
+    .mobile-timing {
+      display: none;
+    }
+
+    .mobile-step {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 7px 8px;
+      background: #fff;
+    }
+
+    .mobile-step strong {
+      display: block;
+      margin-bottom: 2px;
+      color: var(--ink);
+      font-size: 12px;
+      line-height: 1.2;
+    }
+
+    .mobile-step span {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.25;
+    }
+
+    .mobile-arrow {
+      color: var(--blue);
+      font-size: 13px;
+      font-weight: 950;
+      line-height: 1;
+      text-align: center;
+    }
+
+    .mobile-timing-row {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 6px 7px;
+      background: #fff;
+    }
+
+    .mobile-timing-row strong {
+      display: block;
+      color: var(--ink);
+      font-size: 11px;
+      line-height: 1.2;
+    }
+
+    .mobile-timing-row span {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 9.5px;
+      line-height: 1.25;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      padding: 14px 16px 16px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+      padding: 12px;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.45;
+    }
+
+    .card strong {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--ink);
+      font-size: 19px;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      padding: 14px 16px 16px;
+    }
+
+    table {
+      width: 100%;
+      min-width: 1120px;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 18px;
+    }
+
+    th,
+    td {
+      border: 1px solid #d5dde8;
+      padding: 11px 8px;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #eef2f7;
+      color: #253044;
+      font-weight: 900;
+    }
+
+    td { background: #fff; }
+
+    .cell-blue { background: var(--blue-soft); color: #123d91; font-weight: 900; }
+    .cell-yellow { background: var(--yellow-soft); color: #6d4700; font-weight: 900; }
+    .cell-green { background: var(--green-soft); color: #0a542f; font-weight: 900; }
+    .cell-red { background: var(--red-soft); color: #842016; font-weight: 900; }
+
+    .verilog-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      padding: 12px;
+    }
+
+    .code-box {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0f172a;
+    }
+
+    .code-box pre {
+      margin: 0;
+      padding: 12px;
+      color: #e5edf8;
+      font: 13px/1.45 Consolas, &quot;Courier New&quot;, monospace;
+      white-space: pre;
+    }
+
+    .verilog-note {
+      padding: 0 12px 12px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 1100px) {
+      main { padding: 10px; }
+      .cards { grid-template-columns: 1fr; }
+      h1 { font-size: 28px; }
+      .lead { font-size: 18px; }
+      .verilog-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 520px) {
+      html,
+      body {
+        overflow-x: hidden;
+      }
+
+      main {
+        padding: 4px;
+        gap: 5px;
+      }
+
+      header,
+      section {
+        border-radius: 6px;
+        box-shadow: none;
+      }
+
+      header {
+        padding: 6px 7px;
+        gap: 2px;
+      }
+
+      h1 {
+        font-size: 14px;
+        line-height: 1.15;
+      }
+
+      .lead {
+        font-size: 9px;
+        line-height: 1.25;
+      }
+
+      .title {
+        padding: 5px 6px;
+        font-size: 12px;
+        line-height: 1.2;
+      }
+
+      .canvas {
+        padding: 3px;
+        max-height: none;
+        overflow: visible;
+      }
+
+      .canvas svg {
+        display: none;
+      }
+
+      .mobile-flow {
+        display: grid;
+        gap: 4px;
+      }
+
+      .top-label { font-size: 17px; }
+      .blk-title { font-size: 18px; }
+      .blk-sub { font-size: 13px; }
+      .mini-title { font-size: 14px; }
+      .mini-sub { font-size: 11px; }
+      .label { font-size: 14px; }
+
+      .cards {
+        grid-template-columns: 1fr;
+        gap: 4px;
+        padding: 5px;
+      }
+
+      .card {
+        padding: 5px 6px;
+        font-size: 10px;
+        line-height: 1.25;
+      }
+
+      .card strong {
+        margin-bottom: 2px;
+        font-size: 11px;
+      }
+
+      .table-wrap {
+        padding: 4px;
+        max-height: none;
+        overflow: visible;
+      }
+
+      .table-wrap table {
+        display: none;
+      }
+
+      table {
+        width: 100%;
+        min-width: 0;
+        table-layout: fixed;
+        font-size: 8px;
+      }
+
+      th,
+      td {
+        padding: 3px 1px;
+        line-height: 1.16;
+        word-break: break-word;
+      }
+
+      .mobile-timing {
+        display: grid;
+        gap: 4px;
+      }
+
+      .verilog-grid {
+        grid-template-columns: 1fr;
+        gap: 5px;
+        padding: 5px;
+      }
+
+      .code-box {
+        border-radius: 6px;
+      }
+
+      .code-box pre {
+        padding: 6px;
+        font-size: 8.5px;
+        line-height: 1.18;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        tab-size: 2;
+      }
+
+      .verilog-note {
+        padding: 0 6px 6px;
+        font-size: 9px;
+        line-height: 1.25;
+      }
+    }
+  &lt;/style>
+&lt;/head>
+&lt;body>
+  &lt;main>
+    &lt;header>
+      &lt;h1>CHPI Decoder：buffer 直接畫在主路徑上&lt;/h1>
+      &lt;div class=&quot;lead&quot;>
+        CDR 每拍送 &lt;code>CHPI[19:0]&lt;/code>。完整資料路徑是：
+        &lt;code>20b input&lt;/code> → &lt;code>Frame/Residue Buffer&lt;/code> → &lt;code>Restore/Repack&lt;/code> →
+        &lt;code>RGB24 Packer&lt;/code> → &lt;code>RGB[23:0] + valid&lt;/code>。
+      &lt;/div>
+    &lt;/header>
+
+    &lt;section>
+      &lt;div class=&quot;title&quot;>完整主路徑與 DFF / Buffer 數量&lt;/div>
+      &lt;div class=&quot;canvas&quot;>
+        &lt;svg viewBox=&quot;0 0 1460 360&quot; role=&quot;img&quot; aria-label=&quot;CHPI decoder buffer main path&quot;>
+          &lt;defs>
+            &lt;marker id=&quot;arrow&quot; markerWidth=&quot;18&quot; markerHeight=&quot;14&quot; refX=&quot;17&quot; refY=&quot;7&quot; orient=&quot;auto&quot; markerUnits=&quot;userSpaceOnUse&quot;>
+              &lt;path d=&quot;M0,0 L18,7 L0,14 z&quot; fill=&quot;#1f2937&quot;>&lt;/path>
+            &lt;/marker>
+            &lt;marker id=&quot;arrow-blue&quot; markerWidth=&quot;24&quot; markerHeight=&quot;18&quot; refX=&quot;23&quot; refY=&quot;9&quot; orient=&quot;auto&quot; markerUnits=&quot;userSpaceOnUse&quot;>
+              &lt;path d=&quot;M0,0 L24,9 L0,18 z&quot; fill=&quot;#1856c9&quot;>&lt;/path>
+            &lt;/marker>
+          &lt;/defs>
+
+          &lt;text class=&quot;top-label&quot; x=&quot;145&quot; y=&quot;30&quot;>每拍 20bit 進&lt;/text>
+          &lt;text class=&quot;top-label&quot; x=&quot;455&quot; y=&quot;30&quot;>buffer 在這裡&lt;/text>
+          &lt;text class=&quot;top-label&quot; x=&quot;755&quot; y=&quot;30&quot;>還原後重組 20bit&lt;/text>
+          &lt;text class=&quot;top-label&quot; x=&quot;1035&quot; y=&quot;30&quot;>20×6 = 24×5&lt;/text>
+          &lt;text class=&quot;top-label&quot; x=&quot;1305&quot; y=&quot;30&quot;>24bit RGB 出&lt;/text>
+
+          &lt;text class=&quot;label&quot; x=&quot;62&quot; y=&quot;106&quot;>CDR&lt;/text>
+          &lt;text class=&quot;label&quot; x=&quot;62&quot; y=&quot;130&quot;>CHPI[19:0]&lt;/text>
+          &lt;path class=&quot;bus&quot; d=&quot;M34 172 H132&quot;>&lt;/path>
+
+          &lt;rect class=&quot;block blue&quot; x=&quot;150&quot; y=&quot;122&quot; width=&quot;170&quot; height=&quot;100&quot;>&lt;/rect>
+          &lt;text class=&quot;blk-title&quot; x=&quot;235&quot; y=&quot;152&quot;>Input DFF&lt;/text>
+          &lt;text class=&quot;blk-sub&quot; x=&quot;235&quot; y=&quot;178&quot;>20bit / clk&lt;/text>
+          &lt;text class=&quot;blk-sub&quot; x=&quot;235&quot; y=&quot;200&quot;>20 DFF&lt;/text>
+
+          &lt;path class=&quot;wire&quot; d=&quot;M320 172 H372&quot;>&lt;/path>
+
+          &lt;rect class=&quot;block yellow&quot; x=&quot;390&quot; y=&quot;78&quot; width=&quot;300&quot; height=&quot;190&quot;>&lt;/rect>
+          &lt;text class=&quot;blk-title&quot; x=&quot;540&quot; y=&quot;108&quot;>Frame / Residue Buffer&lt;/text>
+
+          &lt;rect class=&quot;block gray&quot; x=&quot;416&quot; y=&quot;132&quot; width=&quot;120&quot; height=&quot;70&quot;>&lt;/rect>
+          &lt;text class=&quot;mini-title&quot; x=&quot;476&quot; y=&quot;154&quot;>Input&lt;/text>
+          &lt;text class=&quot;mini-sub&quot; x=&quot;476&quot; y=&quot;174&quot;>Residue&lt;/text>
+          &lt;text class=&quot;mini-sub&quot; x=&quot;476&quot; y=&quot;192&quot;>最多 26 DFF&lt;/text>
+
+          &lt;rect class=&quot;block gray&quot; x=&quot;552&quot; y=&quot;132&quot; width=&quot;112&quot; height=&quot;70&quot;>&lt;/rect>
+          &lt;text class=&quot;mini-title&quot; x=&quot;608&quot; y=&quot;154&quot;>Header&lt;/text>
+          &lt;text class=&quot;mini-sub&quot; x=&quot;608&quot; y=&quot;174&quot;>H + Label&lt;/text>
+          &lt;text class=&quot;mini-sub&quot; x=&quot;608&quot; y=&quot;192&quot;>7 DFF&lt;/text>
+
+          &lt;text class=&quot;blk-sub&quot; x=&quot;540&quot; y=&quot;232&quot;>目的：不存整包 420bit&lt;/text>
+          &lt;text class=&quot;blk-sub&quot; x=&quot;540&quot; y=&quot;251&quot;>只留跨邊界 bit&lt;/text>
+
+          &lt;path class=&quot;wire&quot; d=&quot;M690 172 H728&quot;>&lt;/path>
+
+          &lt;rect class=&quot;block green&quot; x=&quot;750&quot; y=&quot;112&quot; width=&quot;215&quot; height=&quot;120&quot;>&lt;/rect>
+          &lt;text class=&quot;blk-title&quot; x=&quot;858&quot; y=&quot;142&quot;>Restore / RGB bit buffer&lt;/text>
+          &lt;text class=&quot;blk-sub&quot; x=&quot;858&quot; y=&quot;168&quot;>內部計數到 420b 邊界&lt;/text>
+          &lt;text class=&quot;blk-sub&quot; x=&quot;858&quot; y=&quot;190&quot;>還原後湊成 20b word&lt;/text>
+          &lt;text class=&quot;blk-sub&quot; x=&quot;858&quot; y=&quot;211&quot;>Output pack FIFO 最多 26 DFF&lt;/text>
+
+          &lt;path class=&quot;wire&quot; d=&quot;M965 172 H1002&quot;>&lt;/path>
+
+          &lt;rect class=&quot;block green&quot; x=&quot;1022&quot; y=&quot;122&quot; width=&quot;180&quot; height=&quot;100&quot;>&lt;/rect>
+          &lt;text class=&quot;blk-title&quot; x=&quot;1112&quot; y=&quot;152&quot;>RGB24 Packer&lt;/text>
+          &lt;text class=&quot;blk-sub&quot; x=&quot;1112&quot; y=&quot;178&quot;>useful bits → RGB&lt;/text>
+          &lt;text class=&quot;blk-sub&quot; x=&quot;1112&quot; y=&quot;200&quot;>6 clk → 5 valid&lt;/text>
+
+          &lt;path class=&quot;wire&quot; d=&quot;M1202 172 H1238&quot;>&lt;/path>
+
+          &lt;rect class=&quot;block red&quot; x=&quot;1260&quot; y=&quot;122&quot; width=&quot;170&quot; height=&quot;100&quot;>&lt;/rect>
+          &lt;text class=&quot;blk-title&quot; x=&quot;1345&quot; y=&quot;152&quot;>Output DFF&lt;/text>
+          &lt;text class=&quot;blk-sub&quot; x=&quot;1345&quot; y=&quot;178&quot;>rgb[23:0]&lt;/text>
+          &lt;text class=&quot;blk-sub&quot; x=&quot;1345&quot; y=&quot;200&quot;>24 DFF&lt;/text>
+
+          &lt;path class=&quot;bus&quot; d=&quot;M1430 172 H1450&quot;>&lt;/path>
+          &lt;text class=&quot;label&quot; x=&quot;1365&quot; y=&quot;254&quot;>rgb_valid 時輸出 24bit&lt;/text>
+
+          &lt;rect class=&quot;block gray&quot; x=&quot;180&quot; y=&quot;285&quot; width=&quot;870&quot; height=&quot;60&quot;>&lt;/rect>
+          &lt;text class=&quot;blk-title&quot; x=&quot;615&quot; y=&quot;307&quot;>Streaming buffer 合計&lt;/text>
+          &lt;text class=&quot;blk-sub&quot; x=&quot;615&quot; y=&quot;329&quot;>20 input + 26 raw FIFO + 32 RGB FIFO + 26 debug FIFO + 24 output = 約 128 data DFF&lt;/text>
+        &lt;/svg>
+        &lt;div class=&quot;mobile-flow&quot; aria-label=&quot;CHPI decoder mobile logic path&quot;>
+          &lt;div class=&quot;mobile-step&quot;>
+            &lt;strong>CDR / CHPI[19:0]&lt;/strong>
+            &lt;span>每拍送進來 20bit，LSB first。&lt;/span>
+          &lt;/div>
+          &lt;div class=&quot;mobile-arrow&quot;>↓&lt;/div>
+          &lt;div class=&quot;mobile-step&quot;>
+            &lt;strong>Input DFF&lt;/strong>
+            &lt;span>先打一拍，資料寬度仍是 20bit。&lt;/span>
+          &lt;/div>
+          &lt;div class=&quot;mobile-arrow&quot;>↓&lt;/div>
+          &lt;div class=&quot;mobile-step&quot;>
+            &lt;strong>Frame / Residue Buffer&lt;/strong>
+            &lt;span>用 26bit in_fifo 收跨 7bit group 的 residue；另外記 H + Label。&lt;/span>
+          &lt;/div>
+          &lt;div class=&quot;mobile-arrow&quot;>↓&lt;/div>
+          &lt;div class=&quot;mobile-step&quot;>
+            &lt;strong>Restore / RGB bit buffer&lt;/strong>
+            &lt;span>照 Label 還原 7bit group，直接寫入 RGB24 bit buffer。&lt;/span>
+          &lt;/div>
+          &lt;div class=&quot;mobile-arrow&quot;>↓&lt;/div>
+          &lt;div class=&quot;mobile-step&quot;>
+            &lt;strong>RGB24 Packer&lt;/strong>
+            &lt;span>有效 bit 進 buffer；每個 420b pack 第一拍只有 13b，其餘拍 20b。&lt;/span>
+          &lt;/div>
+          &lt;div class=&quot;mobile-arrow&quot;>↓&lt;/div>
+          &lt;div class=&quot;mobile-step&quot;>
+            &lt;strong>Output DFF&lt;/strong>
+            &lt;span>最後輸出 rgb_data[23:0] + rgb_valid。&lt;/span>
+          &lt;/div>
+        &lt;/div>
+      &lt;/div>
+    &lt;/section>
+
+    &lt;section>
+      &lt;div class=&quot;title&quot;>每拍位寬變化&lt;/div>
+      &lt;div class=&quot;table-wrap&quot;>
+        &lt;table>
+          &lt;thead>
+            &lt;tr>
+              &lt;th>位置&lt;/th>
+              &lt;th>clk0&lt;/th>
+              &lt;th>clk1&lt;/th>
+              &lt;th>clk2&lt;/th>
+              &lt;th>clk3&lt;/th>
+              &lt;th>之後&lt;/th>
+            &lt;/tr>
+          &lt;/thead>
+          &lt;tbody>
+            &lt;tr>
+              &lt;th>CDR/Input DFF&lt;/th>
+              &lt;td class=&quot;cell-blue&quot;>W0&lt;br>20bit&lt;/td>
+              &lt;td class=&quot;cell-blue&quot;>W1&lt;br>20bit&lt;/td>
+              &lt;td class=&quot;cell-blue&quot;>W2&lt;br>20bit&lt;/td>
+              &lt;td class=&quot;cell-blue&quot;>W3&lt;br>20bit&lt;/td>
+              &lt;td class=&quot;cell-blue&quot;>每拍 20bit&lt;/td>
+            &lt;/tr>
+            &lt;tr>
+              &lt;th>Frame / Residue Buffer&lt;/th>
+              &lt;td class=&quot;cell-yellow&quot;>累積 bit&lt;br>看 H/Label&lt;/td>
+              &lt;td class=&quot;cell-yellow&quot;>處理 7b group&lt;/td>
+              &lt;td class=&quot;cell-yellow&quot;>處理 residue&lt;/td>
+              &lt;td class=&quot;cell-yellow&quot;>持續 streaming&lt;/td>
+              &lt;td class=&quot;cell-yellow&quot;>不用等 420bit 全存完&lt;/td>
+            &lt;/tr>
+            &lt;tr>
+              &lt;th>Restore / RGB bit buffer&lt;/th>
+              &lt;td>湊 20b word&lt;/td>
+              &lt;td>湊 20b word&lt;/td>
+              &lt;td>湊 20b word&lt;/td>
+              &lt;td>湊 20b word&lt;/td>
+              &lt;td>對齊後每拍供應 20bit&lt;/td>
+            &lt;/tr>
+            &lt;tr>
+              &lt;th>RGB24 Packer&lt;/th>&lt;td class=&quot;cell-green&quot;>13b effective&lt;br>valid 0&lt;/td>&lt;td class=&quot;cell-green&quot;>+20b → RGB0&lt;br>valid 1&lt;/td>&lt;td class=&quot;cell-green&quot;>+20b → RGB1&lt;br>valid 1&lt;/td>&lt;td class=&quot;cell-green&quot;>+20b → RGB2&lt;br>valid 1&lt;/td>&lt;td class=&quot;cell-green&quot;>buffer >=24b 就吐&lt;/td>
+            &lt;/tr>
+            &lt;tr>
+              &lt;th>Output DFF&lt;/th>
+              &lt;td class=&quot;cell-red&quot;>pipeline 起始&lt;/td>
+              &lt;td class=&quot;cell-red&quot;>RGB0&lt;br>24bit&lt;/td>
+              &lt;td class=&quot;cell-red&quot;>RGB1&lt;br>24bit&lt;/td>
+              &lt;td class=&quot;cell-red&quot;>RGB2&lt;br>24bit&lt;/td>
+              &lt;td class=&quot;cell-red&quot;>rgb_valid 控制&lt;/td>
+            &lt;/tr>
+          &lt;/tbody>
+        &lt;/table>
+        &lt;div class=&quot;mobile-timing&quot; aria-label=&quot;CHPI decoder mobile timing summary&quot;>
+          &lt;div class=&quot;mobile-timing-row&quot;>
+            &lt;strong>CDR / Input DFF&lt;/strong>
+            &lt;span>clk0=W0、clk1=W1、clk2=W2；每拍都是 20bit。&lt;/span>
+          &lt;/div>
+          &lt;div class=&quot;mobile-timing-row&quot;>
+            &lt;strong>Frame / Residue Buffer&lt;/strong>
+            &lt;span>累積 incoming bits，先抓 H/Label，再每次處理 7bit group/residue。&lt;/span>
+          &lt;/div>
+          &lt;div class=&quot;mobile-timing-row&quot;>
+            &lt;strong>Restore / RGB bit buffer&lt;/strong>
+            &lt;span>還原後直接進 RGB bit buffer，不必先湊成 20bit word。&lt;/span>
+          &lt;/div>
+          &lt;div class=&quot;mobile-timing-row&quot;>
+            &lt;strong>RGB24 Packer&lt;/strong>
+            &lt;span>bit buffer 只要 >=24bit 就吐 RGB[23:0]，不做 10b→8b。&lt;/span>
+          &lt;/div>
+          &lt;div class=&quot;mobile-timing-row&quot;>
+            &lt;strong>Output DFF&lt;/strong>
+            &lt;span>rgb_valid 由 buffer 是否滿 24bit 決定。&lt;/span>
+          &lt;/div>
+        &lt;/div>
+      &lt;/div>
+    &lt;/section>
+
+    &lt;section>
+      &lt;div class=&quot;title&quot;>Decode Verilog：外部只有 20bit input&lt;/div>
+      &lt;div class=&quot;verilog-grid&quot;>&lt;div class=&quot;code-box&quot;>&lt;pre>`timescale 1ns/1ps
+
+module chpi_decode_20b_stream_top (
+  input  wire        clk,
+  input  wire        rst_n,
+  input  wire        valid_i,
+  input  wire [19:0] chpi_in,
+  output wire        rgb_valid,
+  output wire [23:0] rgb_data,
+  output wire        useful20_valid,
+  output wire [19:0] useful20_data
+);
+  chpi_420b413b_rgb24_stream_dec u_dec (
+    .clk            (clk),
+    .rst_n          (rst_n),
+    .valid_i        (valid_i),
+    .chpi_in        (chpi_in),
+    .rgb_valid      (rgb_valid),
+    .rgb_data       (rgb_data),
+    .useful20_valid (useful20_valid),
+    .useful20_data  (useful20_data)
+  );
+endmodule
+
+module chpi_420b413b_rgb24_stream_dec (
+  input  wire        clk,
+  input  wire        rst_n,
+  input  wire        valid_i,
+  input  wire [19:0] chpi_in,
+  output reg         rgb_valid,
+  output reg  [23:0] rgb_data,
+  output reg         useful20_valid,
+  output reg  [19:0] useful20_data
+);
+  reg [25:0] raw_fifo, raw_fifo_next;
+  reg [5:0]  raw_cnt, raw_cnt_next;
+  reg [31:0] rgb_fifo, rgb_fifo_next;
+  reg [5:0]  rgb_cnt, rgb_cnt_next;
+  reg [25:0] useful_fifo, useful_fifo_next;
+  reg [5:0]  useful_cnt, useful_cnt_next;
+  reg [8:0]  bit_cnt_420, bit_cnt_420_next;
+  reg [5:0]  label_reg;
+  reg        replace_en;
+  reg        rgb_emit_done;
+  reg        useful_emit_done;
+  reg [6:0]  group_in, group_out;
+  integer k;
+
+  always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      rgb_valid      &amp;lt;= 1&amp;#39;b0;
+      rgb_data       &amp;lt;= 24&amp;#39;d0;
+      useful20_valid &amp;lt;= 1&amp;#39;b0;
+      useful20_data  &amp;lt;= 20&amp;#39;d0;
+      raw_fifo       &amp;lt;= 26&amp;#39;d0;
+      raw_cnt        &amp;lt;= 6&amp;#39;d0;
+      rgb_fifo       &amp;lt;= 32&amp;#39;d0;
+      rgb_cnt        &amp;lt;= 6&amp;#39;d0;
+      useful_fifo    &amp;lt;= 26&amp;#39;d0;
+      useful_cnt     &amp;lt;= 6&amp;#39;d0;
+      bit_cnt_420    &amp;lt;= 9&amp;#39;d0;
+      label_reg      &amp;lt;= 6&amp;#39;d0;
+      replace_en     &amp;lt;= 1&amp;#39;b0;
+    end else begin
+      rgb_valid      &amp;lt;= 1&amp;#39;b0;
+      useful20_valid &amp;lt;= 1&amp;#39;b0;
+
+      raw_fifo_next     = raw_fifo;
+      raw_cnt_next      = raw_cnt;
+      rgb_fifo_next     = rgb_fifo;
+      rgb_cnt_next      = rgb_cnt;
+      useful_fifo_next  = useful_fifo;
+      useful_cnt_next   = useful_cnt;
+      bit_cnt_420_next  = bit_cnt_420;
+      rgb_emit_done     = 1&amp;#39;b0;
+      useful_emit_done  = 1&amp;#39;b0;
+
+      if (rgb_cnt_next &amp;gt;= 6&amp;#39;d24) begin
+        rgb_data       &amp;lt;= rgb_fifo_next[23:0];
+        rgb_valid      &amp;lt;= 1&amp;#39;b1;
+        rgb_fifo_next  = rgb_fifo_next &amp;gt;&amp;gt; 24;
+        rgb_cnt_next   = rgb_cnt_next - 6&amp;#39;d24;
+        rgb_emit_done  = 1&amp;#39;b1;
+      end
+
+      if (useful_cnt_next &amp;gt;= 6&amp;#39;d20) begin
+        useful20_data      &amp;lt;= useful_fifo_next[19:0];
+        useful20_valid     &amp;lt;= 1&amp;#39;b1;
+        useful_fifo_next   = useful_fifo_next &amp;gt;&amp;gt; 20;
+        useful_cnt_next    = useful_cnt_next - 6&amp;#39;d20;
+        useful_emit_done   = 1&amp;#39;b1;
+      end
+
+      if (valid_i) begin
+        raw_fifo_next = raw_fifo_next | ({{6{1&amp;#39;b0}}, chpi_in} &amp;lt;&amp;lt; raw_cnt_next);
+        raw_cnt_next  = raw_cnt_next + 6&amp;#39;d20;
+      end
+
+      for (k = 0; k &amp;lt; 3; k = k + 1) begin
+        if (raw_cnt_next &amp;gt;= 6&amp;#39;d7) begin
+          group_in = raw_fifo_next[6:0];
+
+          if (bit_cnt_420_next == 9&amp;#39;d0) begin
+            label_reg  = group_in[5:0];
+            replace_en = (group_in[5:0] != {6{~group_in[6]}});
+          end else begin
+            if (replace_en &amp;amp;&amp;amp; (group_in[6:1] == label_reg)) begin
+              group_out = group_in[0] ? 7&amp;#39;b1111111 : 7&amp;#39;b0000000;
+            end else begin
+              group_out = group_in;
+            end
+
+            rgb_fifo_next = rgb_fifo_next | ({{25{1&amp;#39;b0}}, group_out} &amp;lt;&amp;lt; rgb_cnt_next);
+            rgb_cnt_next  = rgb_cnt_next + 6&amp;#39;d7;
+
+            useful_fifo_next = useful_fifo_next | ({{19{1&amp;#39;b0}}, group_out} &amp;lt;&amp;lt; useful_cnt_next);
+            useful_cnt_next  = useful_cnt_next + 6&amp;#39;d7;
+
+            if (!rgb_emit_done &amp;amp;&amp;amp; (rgb_cnt_next &amp;gt;= 6&amp;#39;d24)) begin
+              rgb_data       &amp;lt;= rgb_fifo_next[23:0];
+              rgb_valid      &amp;lt;= 1&amp;#39;b1;
+              rgb_fifo_next  = rgb_fifo_next &amp;gt;&amp;gt; 24;
+              rgb_cnt_next   = rgb_cnt_next - 6&amp;#39;d24;
+              rgb_emit_done  = 1&amp;#39;b1;
+            end
+
+            if (!useful_emit_done &amp;amp;&amp;amp; (useful_cnt_next &amp;gt;= 6&amp;#39;d20)) begin
+              useful20_data      &amp;lt;= useful_fifo_next[19:0];
+              useful20_valid     &amp;lt;= 1&amp;#39;b1;
+              useful_fifo_next   = useful_fifo_next &amp;gt;&amp;gt; 20;
+              useful_cnt_next    = useful_cnt_next - 6&amp;#39;d20;
+              useful_emit_done   = 1&amp;#39;b1;
+            end
+          end
+
+          raw_fifo_next    = raw_fifo_next &amp;gt;&amp;gt; 7;
+          raw_cnt_next     = raw_cnt_next - 6&amp;#39;d7;
+          bit_cnt_420_next = (bit_cnt_420_next == 9&amp;#39;d413) ? 9&amp;#39;d0
+                                                          : bit_cnt_420_next + 9&amp;#39;d7;
+        end
+      end
+
+      raw_fifo    &amp;lt;= raw_fifo_next;
+      raw_cnt     &amp;lt;= raw_cnt_next;
+      rgb_fifo    &amp;lt;= rgb_fifo_next;
+      rgb_cnt     &amp;lt;= rgb_cnt_next;
+      useful_fifo &amp;lt;= useful_fifo_next;
+      useful_cnt  &amp;lt;= useful_cnt_next;
+      bit_cnt_420 &amp;lt;= bit_cnt_420_next;
+    end
+  end
+endmodule
+&lt;/pre>&lt;/div>&lt;/div>&lt;div class=&quot;verilog-note&quot;>
+        重點：top module 的外部資料入口只有 &lt;code>chpi_in[19:0]&lt;/code>。
+        420b/413b 是內部計數與狀態機邊界，不是外部一次餵 &lt;code>420bit&lt;/code>。每個 420b pack 共 21 拍，第 1 拍扣 7b header 後只新增 13b effective data，其餘 20 拍各新增 20b；RGB buffer 只要滿 24b 就輸出一次，不做 10b→8b。
+      &lt;/div>
+    &lt;/section>
+  &lt;/main>
+&lt;/body>
+&lt;/html>
+
+"></iframe>
+    </section>
+
+    <section class="page-view" data-view="rgb" hidden>
+      <iframe class="embedded-frame" title="20bit CHPI 高效資料流 → 24bit RGB" srcdoc="&lt;!doctype html>
+&lt;html lang=&quot;zh-Hant&quot;>
+&lt;head>
+  &lt;meta charset=&quot;utf-8&quot;>
+  &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
+  &lt;title>CHPI 20bit to RGB24 Comic&lt;/title>
+  &lt;style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f6f9;
+      --paper: #fffefb;
+      --ink: #121826;
+      --muted: #566174;
+      --line: #202938;
+      --blue: #1f5cc8;
+      --blue-soft: #dbeafe;
+      --green: #087443;
+      --green-soft: #dcfce7;
+      --yellow: #9a6500;
+      --yellow-soft: #fff2bf;
+      --red: #b42318;
+      --red-soft: #ffe4df;
+      --purple: #6d3bd1;
+      --purple-soft: #ede9fe;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: &quot;Segoe UI&quot;, Arial, &quot;Microsoft JhengHei&quot;, sans-serif;
+    }
+
+    main {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 18px;
+      display: grid;
+      gap: 14px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: end;
+      gap: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 30px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .badge {
+      padding: 8px 12px;
+      border: 2px solid var(--line);
+      border-radius: 8px;
+      background: var(--yellow-soft);
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .comic {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .panel {
+      min-height: 270px;
+      position: relative;
+      overflow: hidden;
+      border: 3px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      box-shadow: 5px 5px 0 rgba(18, 24, 38, 0.18);
+    }
+
+    .panel-title {
+      padding: 8px 10px;
+      border-bottom: 3px solid var(--line);
+      background: #ffffff;
+      font-size: 18px;
+      font-weight: 950;
+    }
+
+    .panel-body {
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .bubble {
+      position: relative;
+      padding: 9px 11px;
+      border: 2px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      font-size: 14px;
+      line-height: 1.35;
+      font-weight: 750;
+    }
+
+    .bubble::after {
+      content: &quot;&quot;;
+      position: absolute;
+      left: 22px;
+      bottom: -12px;
+      width: 18px;
+      height: 18px;
+      border-right: 2px solid var(--line);
+      border-bottom: 2px solid var(--line);
+      background: #fff;
+      transform: rotate(45deg);
+    }
+
+    .chip {
+      display: grid;
+      place-items: center;
+      min-height: 74px;
+      padding: 10px;
+      border: 3px solid var(--line);
+      border-radius: 8px;
+      background: var(--blue-soft);
+      color: #103b86;
+      font-size: 21px;
+      font-weight: 950;
+      text-align: center;
+    }
+
+    .chip small {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .arrow {
+      text-align: center;
+      color: var(--blue);
+      font-size: 28px;
+      font-weight: 950;
+      line-height: 1;
+    }
+
+    .bits {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .bit,
+    .byte {
+      display: inline-grid;
+      place-items: center;
+      min-width: 29px;
+      height: 26px;
+      border: 2px solid var(--line);
+      border-radius: 5px;
+      font-family: Consolas, &quot;Courier New&quot;, monospace;
+      font-size: 12px;
+      font-weight: 950;
+    }
+
+    .bit { background: var(--blue-soft); color: #123d91; }
+    .byte { min-width: 42px; background: var(--green-soft); color: var(--green); }
+    .hold { background: var(--yellow-soft); color: var(--yellow); }
+    .rgb-r { background: var(--red-soft); color: var(--red); }
+    .rgb-g { background: var(--green-soft); color: var(--green); }
+    .rgb-b { background: var(--blue-soft); color: var(--blue); }
+    .valid { background: var(--purple-soft); color: var(--purple); }
+    .round-b th,
+    .round-b td {
+      background: #f8fbff;
+    }
+    .round-b th:first-child {
+      border-left: 8px solid var(--blue);
+    }
+
+    .wide {
+      grid-column: 1 / -1;
+    }
+
+    .timeline {
+      overflow: auto;
+      border: 3px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      box-shadow: 5px 5px 0 rgba(18, 24, 38, 0.18);
+    }
+
+    .timeline-title {
+      padding: 10px 12px 4px;
+      font-size: 17px;
+      font-weight: 950;
+      color: var(--red);
+    }
+
+    .timeline-hint {
+      padding: 0 12px 10px;
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--muted);
+    }
+
+    table {
+      width: 100%;
+      min-width: 980px;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    th,
+    td {
+      border: 2px solid var(--line);
+      padding: 7px 6px;
+      text-align: center;
+      vertical-align: middle;
+      font-size: 13px;
+      line-height: 1.25;
+    }
+
+    th {
+      background: #eef2f7;
+      font-weight: 950;
+    }
+
+    .note {
+      padding: 12px 14px;
+      border: 3px solid var(--line);
+      border-radius: 8px;
+      background: var(--yellow-soft);
+      font-size: 18px;
+      font-weight: 900;
+      line-height: 1.45;
+      box-shadow: 5px 5px 0 rgba(18, 24, 38, 0.18);
+    }
+
+    code {
+      color: var(--blue);
+      font-family: Consolas, &quot;Courier New&quot;, monospace;
+      font-weight: 950;
+    }
+
+    @media (max-width: 980px) {
+      main { padding: 10px; }
+      header { grid-template-columns: 1fr; }
+      h1 { font-size: 22px; }
+      .comic { grid-template-columns: 1fr; }
+      .panel { min-height: 0; }
+      .badge { justify-self: start; }
+      .note { font-size: 15px; }
+    }
+  &lt;/style>
+&lt;/head>
+&lt;body>
+  &lt;main>
+    &lt;header>
+      &lt;div>
+        &lt;h1>20bit CHPI 高效資料流 → 24bit RGB&lt;/h1>
+        &lt;div class=&quot;subtitle&quot;>同一個 P2P recovered clock，不做 CDC；420b 是一個 pack，每拍輸入 20b，每個 pack 第 1 拍扣 7b header，只新增 13b effective data，buffer 滿 24b 就吐 RGB。&lt;/div>
+      &lt;/div>
+      &lt;div class=&quot;badge&quot;>Input：CHPI[19:0] / clk　Output：RGB[23:0] + valid&lt;/div>
+    &lt;/header>
+
+    &lt;section class=&quot;comic&quot; aria-label=&quot;CHPI 20bit to RGB24 comic&quot;>
+      &lt;article class=&quot;panel&quot;>
+        &lt;div class=&quot;panel-title&quot;>1. 外面每拍丟 20bit&lt;/div>
+        &lt;div class=&quot;panel-body&quot;>
+          &lt;div class=&quot;bubble&quot;>我不是 RGB，也還不是 useful data；我是帶 header/label 的 CHPI encoded stream。&lt;/div>
+          &lt;div class=&quot;chip&quot;>raw CHPI[19:0]&lt;small>20bit / p2p_clk，LSB first&lt;/small>&lt;/div>
+          &lt;div class=&quot;bits&quot;>
+            &lt;span class=&quot;bit&quot;>b0&lt;/span>&lt;span class=&quot;bit&quot;>b1&lt;/span>&lt;span class=&quot;bit&quot;>b2&lt;/span>&lt;span class=&quot;bit&quot;>...&lt;/span>
+            &lt;span class=&quot;bit&quot;>b19&lt;/span>
+          &lt;/div>
+        &lt;/div>
+      &lt;/article>
+
+      &lt;article class=&quot;panel&quot;>
+        &lt;div class=&quot;panel-title&quot;>2. 先解長編碼&lt;/div>
+        &lt;div class=&quot;panel-body&quot;>
+          &lt;div class=&quot;bubble&quot;>420b 邊界只在內部計數，不是外部一次餵 420bit；decode 後是 420 > 413。&lt;/div>
+          &lt;div class=&quot;chip&quot;>420 > 413&lt;small>去掉 H + Label，還原 7bit group&lt;/small>&lt;/div>
+          &lt;div class=&quot;arrow&quot;>↓&lt;/div>
+          &lt;div class=&quot;chip&quot; style=&quot;background:var(--yellow-soft);color:var(--yellow);&quot;>413b real stream&lt;small>每個 bit 都是有效資料&lt;/small>&lt;/div>
+        &lt;/div>
+      &lt;/article>
+
+      &lt;article class=&quot;panel&quot;>
+        &lt;div class=&quot;panel-title&quot;>3. 放進有效 bit buffer&lt;/div>
+        &lt;div class=&quot;panel-body&quot;>
+          &lt;div class=&quot;bubble&quot;>每個 420b pack 的第 1 拍因為含 header，只把 13b effective data 放進 buffer；後面 20 拍每拍放 20b。&lt;/div>
+          &lt;div class=&quot;chip&quot;>effective bit FIFO&lt;small>第 1 拍 13b，其餘拍 20b&lt;/small>&lt;/div>
+          &lt;div class=&quot;arrow&quot;>↓&lt;/div>
+          &lt;div class=&quot;bits&quot;>
+            &lt;span class=&quot;bit&quot;>e0&lt;/span>&lt;span class=&quot;bit&quot;>e1&lt;/span>&lt;span class=&quot;bit&quot;>e2&lt;/span>
+            &lt;span class=&quot;bit&quot;>...&lt;/span>&lt;span class=&quot;bit&quot;>e23&lt;/span>
+          &lt;/div>
+          &lt;div class=&quot;bubble&quot;>Label 還原仍以 7bit group 處理，但 RGB 節奏看的是 effective bit buffer 有沒有滿 24bit。&lt;/div>
+        &lt;/div>
+      &lt;/article>
+
+      &lt;article class=&quot;panel&quot;>
+        &lt;div class=&quot;panel-title&quot;>4. 不做 10b → 8b&lt;/div>
+        &lt;div class=&quot;panel-body&quot;>
+          &lt;div class=&quot;bubble&quot;>還原後的 effective bits 都是資料；不能再做 10b→8b 把資料砍掉。&lt;/div>
+          &lt;div class=&quot;chip&quot;>real bitstream&lt;small>約 413 / 420 = 98.33% efficiency&lt;/small>&lt;/div>
+          &lt;div class=&quot;arrow&quot;>↓&lt;/div>
+          &lt;div class=&quot;bits&quot;>
+            &lt;span class=&quot;bit&quot;>u0&lt;/span>&lt;span class=&quot;bit&quot;>u1&lt;/span>&lt;span class=&quot;bit&quot;>u2&lt;/span>
+            &lt;span class=&quot;bit&quot;>...&lt;/span>&lt;span class=&quot;bit&quot;>u19&lt;/span>
+          &lt;/div>
+          &lt;div class=&quot;bubble&quot;>如果做 10b→8b，100bit 會只剩 80bit，clock rate 會不夠。&lt;/div>
+        &lt;/div>
+      &lt;/article>
+
+      &lt;article class=&quot;panel&quot;>
+        &lt;div class=&quot;panel-title&quot;>5. 直接湊 RGB24&lt;/div>
+        &lt;div class=&quot;panel-body&quot;>
+          &lt;div class=&quot;bubble&quot;>RGB 端只看 buffer：bit 數 ≥ 24 就輸出一次 RGB[23:0]，剩下 residue 留給下一拍。&lt;/div>
+          &lt;div class=&quot;chip&quot; style=&quot;background:var(--purple-soft);color:var(--purple);&quot;>RGB24 Packer&lt;small>buffer ≥ 24b → rgb_valid&lt;/small>&lt;/div>
+          &lt;div class=&quot;bits&quot;>
+            &lt;span class=&quot;byte rgb-r&quot;>R&lt;/span>
+            &lt;span class=&quot;byte rgb-g&quot;>G&lt;/span>
+            &lt;span class=&quot;byte rgb-b&quot;>B&lt;/span>
+            &lt;span class=&quot;byte valid&quot;>valid&lt;/span>
+          &lt;/div>
+        &lt;/div>
+      &lt;/article>
+    &lt;/section>
+
+    &lt;section class=&quot;timeline wide&quot; aria-label=&quot;clock timing example&quot;>
+      &lt;div class=&quot;timeline-title&quot;>Raw clock 真實節奏：420b pack 進來，每拍 20b，先扣 header 再進 RGB24 packer&lt;/div>
+      &lt;div class=&quot;timeline-hint&quot;>這張表看的是「扣掉 7b header 後，直接往 24bit RGB packer 累積」的 residue。第一個 420b 剛好 21 拍；第 22 拍已經是第二個 420b 的第 1 拍。&lt;/div>
+      &lt;table style=&quot;margin-bottom:10px;&quot;>
+        &lt;thead>
+          &lt;tr>
+            &lt;th>raw clk&lt;/th>
+            &lt;th>420b block&lt;/th>
+            &lt;th>本拍扣 header 後送入 RGB packer&lt;/th>
+            &lt;th>RGB packer 累積 / 輸出後 residue&lt;/th>
+            &lt;th>rgb_valid&lt;/th>
+          &lt;/tr>
+        &lt;/thead>
+        &lt;tbody>
+          &lt;tr>
+            &lt;th>1&lt;/th>
+            &lt;td>第一個 420b：第 1 拍&lt;/td>
+            &lt;td>20b - 7b header = &lt;span class=&quot;byte hold&quot;>13b&lt;/span>&lt;/td>
+            &lt;td>13b，不夠 24b，剩 &lt;span class=&quot;byte hold&quot;>13b&lt;/span>&lt;/td>
+            &lt;td>&lt;span class=&quot;byte&quot;>0&lt;/span>&lt;/td>
+          &lt;/tr>
+          &lt;tr>
+            &lt;th>2&lt;/th>
+            &lt;td>第一個 420b：第 2 拍&lt;/td>
+            &lt;td>20b useful&lt;/td>
+            &lt;td>13 + 20 = 33b，吐 24b，剩 &lt;span class=&quot;byte hold&quot;>9b&lt;/span>&lt;/td>
+            &lt;td>&lt;span class=&quot;byte valid&quot;>1&lt;/span>&lt;/td>
+          &lt;/tr>
+          &lt;tr>
+            &lt;th>3&lt;/th>
+            &lt;td>第一個 420b：第 3 拍&lt;/td>
+            &lt;td>20b useful&lt;/td>
+            &lt;td>9 + 20 = 29b，吐 24b，剩 &lt;span class=&quot;byte hold&quot;>5b&lt;/span>&lt;/td>
+            &lt;td>&lt;span class=&quot;byte valid&quot;>1&lt;/span>&lt;/td>
+          &lt;/tr>
+          &lt;tr>
+            &lt;th>4&lt;/th>
+            &lt;td>第一個 420b：第 4 拍&lt;/td>
+            &lt;td>20b useful&lt;/td>
+            &lt;td>5 + 20 = 25b，吐 24b，剩 &lt;span class=&quot;byte hold&quot;>1b&lt;/span>&lt;/td>
+            &lt;td>&lt;span class=&quot;byte valid&quot;>1&lt;/span>&lt;/td>
+          &lt;/tr>
+          &lt;tr>
+            &lt;th>5&lt;/th>
+            &lt;td>第一個 420b：第 5 拍&lt;/td>
+            &lt;td>20b useful&lt;/td>
+            &lt;td>1 + 20 = 21b，不夠 24b，剩 &lt;span class=&quot;byte hold&quot;>21b&lt;/span>&lt;/td>
+            &lt;td>&lt;span class=&quot;byte&quot;>0&lt;/span>&lt;/td>
+          &lt;/tr>
+          &lt;tr>
+            &lt;th>6 ~ 21&lt;/th>
+            &lt;td>第一個 420b：第 6 ~ 21 拍&lt;/td>
+            &lt;td>每拍 20b useful&lt;/td>
+            &lt;td>依序剩 17, 13, 9, 5, 1, 21, 17, 13, 9, 5, 1, 21, 17, 13, 9, &lt;span class=&quot;byte hold&quot;>5b&lt;/span>&lt;/td>
+            &lt;td>依 24b 是否湊滿而跳動&lt;/td>
+          &lt;/tr>
+          &lt;tr class=&quot;round-b&quot;>
+            &lt;th>22&lt;/th>
+            &lt;td>第二個 420b：第 1 拍&lt;/td>
+            &lt;td>20b - 7b header = &lt;span class=&quot;byte hold&quot;>13b&lt;/span>&lt;/td>
+            &lt;td>上一包剩 5b + 13b = &lt;span class=&quot;byte hold&quot;>18b&lt;/span>，不夠 24b&lt;/td>
+            &lt;td>&lt;span class=&quot;byte&quot;>0&lt;/span>&lt;/td>
+          &lt;/tr>
+        &lt;/tbody>
+      &lt;/table>
+    &lt;/section>
+
+    &lt;section class=&quot;note&quot;>
+      重點：一個 &lt;code>420b pack = 21&lt;/code> 個 raw clock。每個 pack 的第 1 拍含 7b header，所以只新增
+      &lt;code>13b&lt;/code> effective data；後面 20 拍各新增 &lt;code>20b&lt;/code>。RGB 端只是一個 effective-bit buffer：
+      只要 &lt;code>buffer_cnt &amp;gt;= 24&lt;/code> 就輸出 &lt;code>rgb_data[23:0]&lt;/code> 並拉高 &lt;code>rgb_valid&lt;/code>。
+      &lt;code>useful20&lt;/code> 只保留給 debug 觀察，不是主資料路徑。
+    &lt;/section>
+  &lt;/main>
+&lt;/body>
+&lt;/html>
+"></iframe>
+    </section>
+  </main>
+
+  <script>
+    "use strict";
+
+    const rowsEl = document.getElementById("rows");
+    const tableWrap = document.getElementById("tableWrap");
+    const playBtn = document.getElementById("playBtn");
+    const prevBtn = document.getElementById("prevBtn");
+    const nextBtn = document.getElementById("nextBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const speedEl = document.getElementById("speed");
+    const speedText = document.getElementById("speedText");
+
+    const decValue = document.getElementById("decValue");
+    const byteValue = document.getElementById("byteValue");
+    const headerValue = document.getElementById("headerValue");
+    const labelValue = document.getElementById("labelValue");
+    const replaceValue = document.getElementById("replaceValue");
+    const largeHex = document.getElementById("largeHex");
+    const largeDec = document.getElementById("largeDec");
+    const preview413 = document.getElementById("preview413");
+    const preview420 = document.getElementById("preview420");
+    const ruleText = document.getElementById("ruleText");
+
+    const byteBits = document.getElementById("byteBits");
+    const headerBits = document.getElementById("headerBits");
+    const groupInBits = document.getElementById("groupInBits");
+    const groupOutBits = document.getElementById("groupOutBits");
+    const formulaLines = Array.from(document.querySelectorAll(".formula-line"));
+
+    const tracePayload = document.getElementById("tracePayload");
+    const traceGroup = document.getElementById("traceGroup");
+    const traceUsed = document.getElementById("traceUsed");
+    const traceReplace = document.getElementById("traceReplace");
+    const traceLabel = document.getElementById("traceLabel");
+    const traceH = document.getElementById("traceH");
+    const traceHeader = document.getElementById("traceHeader");
+    const traceZero = document.getElementById("traceZero");
+    const traceOne = document.getElementById("traceOne");
+    const traceDout = document.getElementById("traceDout");
+    const pageTabs = Array.from(document.querySelectorAll(".page-tab"));
+    const pageViews = Array.from(document.querySelectorAll(".page-view"));
+    const embeddedFrames = Array.from(document.querySelectorAll(".embedded-frame"));
+
+    let code = 0;
+    let previousCode = 0;
+    let formulaStep = 0;
+    let playing = true;
+    let lastTime = performance.now();
+    let carryMs = 0;
+    const rowEls = [];
+
+    function bin(value, width) {
+      return value.toString(2).padStart(width, "0");
+    }
+
+    function hex(value, width) {
+      return value.toString(16).toUpperCase().padStart(width, "0");
+    }
+
+    function byteBitsLsbFirst(value) {
+      return Array.from({ length: 8 }, (_, index) => (value >> index) & 1).join("");
+    }
+
+    function makePayload413(value) {
+      const pattern = byteBitsLsbFirst(value);
+      return pattern.repeat(Math.ceil(413 / 8)).slice(0, 413);
+    }
+
+    function firstUnusedLabel(used) {
+      for (let value = 1; value < 64; value += 1) {
+        if (!used.has(bin(value, 6))) return bin(value, 6);
+      }
+      return "000000";
+    }
+
+    function encodeLong(value, prevBit) {
+      const payload = makePayload413(value);
+      const groups = Array.from({ length: 59 }, (_, index) => payload.slice(index * 7, index * 7 + 7));
+      const used = new Set(groups.map((group) => group.slice(0, 6)));
+      const replaceEn = groups.some((group) => group === "0000000" || group === "1111111");
+      const label = firstUnusedLabel(used);
+      const h = prevBit === "1" ? "0" : "1";
+      const header = replaceEn ? `${h}${label}` : `${h}${(h === "1" ? "0" : "1").repeat(6)}`;
+      const encodedGroups = groups.map((group) => {
+        if (!replaceEn) return group;
+        if (group === "0000000") return `${label}0`;
+        if (group === "1111111") return `${label}1`;
+        return group;
+      });
+      const encoded = `${header}${encodedGroups.join("")}`;
+      const sampleIndex = groups.findIndex((group) => group === "0000000" || group === "1111111");
+      const selectedIndex = sampleIndex >= 0 ? sampleIndex : 0;
+      return {
+        value,
+        payload,
+        groups,
+        used,
+        replaceEn,
+        label,
+        h,
+        header,
+        encodedGroups,
+        encoded,
+        sampleIndex: selectedIndex,
+        sampleGroupIn: groups[selectedIndex],
+        sampleGroupOut: encodedGroups[selectedIndex],
+        lastBit: encoded[encoded.length - 1]
+      };
+    }
+
+    const cases = [];
+    let prevBit = "0";
+    for (let value = 0; value < 256; value += 1) {
+      const result = encodeLong(value, prevBit);
+      cases.push(result);
+      prevBit = result.lastBit;
+    }
+
+    function bitSpans(text, previousText, forceRed = false) {
+      let html = "";
+      for (let i = 0; i < text.length; i += 1) {
+        const changed = forceRed || text[i] !== previousText[i];
+        html += changed ? `<span class="changed-bit">${text[i]}</span>` : text[i];
+      }
+      return html;
+    }
+
+    function preview(text, previousText) {
+      const left = text.slice(0, 42);
+      const previousLeft = previousText.slice(0, 42);
+      const right = text.slice(-18);
+      const previousRight = previousText.slice(-18);
+      return `${bitSpans(left, previousLeft)} ... ${bitSpans(right, previousRight)}`;
+    }
+
+    function pvBit(bitValue, className) {
+      return `<span class="pv-bit ${className}">${bitValue}</span>`;
+    }
+
+    function previewWindow(text, classForIndex) {
+      const leftCount = 42;
+      const rightCount = 18;
+      const left = Array.from({ length: leftCount }, (_, index) =>
+        pvBit(text[index], classForIndex(index))
+      ).join("");
+      const startRight = text.length - rightCount;
+      const right = Array.from({ length: rightCount }, (_, offset) => {
+        const index = startRight + offset;
+        return pvBit(text[index], classForIndex(index));
+      }).join("");
+      return `${left}<span class="pv-gap">...</span>${right}`;
+    }
+
+    function previewFirstN(text, count, classForIndex) {
+      return Array.from({ length: count }, (_, index) =>
+        pvBit(text[index], classForIndex(index))
+      ).join("");
+    }
+
+    function isConstantGroup(group) {
+      return group === "0000000" || group === "1111111";
+    }
+
+    function preview420Colored(item) {
+      return previewWindow(item.encoded, (index) => {
+        if (index === 0) return "pv-h";
+        if (index > 0 && index < 7) return "pv-label";
+        const groupIndex = Math.floor((index - 7) / 7);
+        const bitOffset = (index - 7) % 7;
+        const replaced = item.replaceEn && isConstantGroup(item.groups[groupIndex]);
+        if (replaced) return bitOffset < 6 ? "pv-replaced-prefix" : "pv-flag";
+        return groupIndex % 2 === 0 ? "pv-blue" : "pv-light-blue";
+      });
+    }
+
+    function preview420First32Colored(item) {
+      return previewFirstN(item.encoded, 32, (index) => {
+        if (index === 0) return "pv-h";
+        if (index > 0 && index < 7) return "pv-label";
+        const groupIndex = Math.floor((index - 7) / 7);
+        const bitOffset = (index - 7) % 7;
+        const replaced = item.replaceEn && isConstantGroup(item.groups[groupIndex]);
+        if (replaced) return bitOffset < 6 ? "pv-replaced-prefix" : "pv-flag";
+        return groupIndex % 2 === 0 ? "pv-blue" : "pv-light-blue";
+      });
+    }
+
+    function preview413Colored(item) {
+      return previewWindow(item.payload, (index) => {
+        const groupIndex = Math.floor(index / 7);
+        if (isConstantGroup(item.groups[groupIndex])) return "pv-constant";
+        return groupIndex % 2 === 0 ? "pv-blue" : "pv-light-blue";
+      });
+    }
+
+    function preview413First32Colored(item) {
+      return previewFirstN(item.payload, 32, (index) => {
+        const groupIndex = Math.floor(index / 7);
+        if (isConstantGroup(item.groups[groupIndex])) return "pv-constant";
+        return groupIndex % 2 === 0 ? "pv-blue" : "pv-light-blue";
+      });
+    }
+
+    function makeBitCell() {
+      const cell = document.createElement("div");
+      cell.className = "bit";
+      return cell;
+    }
+
+    function fillBitRows() {
+      for (let i = 0; i < 8; i += 1) byteBits.appendChild(makeBitCell());
+      for (let i = 0; i < 7; i += 1) headerBits.appendChild(makeBitCell());
+      for (let i = 0; i < 7; i += 1) groupInBits.appendChild(makeBitCell());
+      for (let i = 0; i < 7; i += 1) groupOutBits.appendChild(makeBitCell());
+    }
+
+    function updateBitStrip(container, text, previousText, forceRed = false) {
+      const cells = Array.from(container.querySelectorAll(".bit"));
+      for (let i = 0; i < text.length; i += 1) {
+        const bitValue = text[i] === "1";
+        cells[i].textContent = text[i];
+        cells[i].classList.toggle("one", bitValue);
+        cells[i].classList.toggle("changed", forceRed || text[i] !== previousText[i]);
+      }
+    }
+
+    function buildRows() {
+      for (const item of cases) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${item.value}</td>
+          <td>${byteBitsLsbFirst(item.value)}</td>
+          <td>${item.label}</td>
+          <td>${item.header}</td>
+          <td class="${item.replaceEn ? "yes" : "no"}">${item.replaceEn ? "YES" : "NO"}</td>
+          <td>${preview420First32Colored(item)}</td>
+          <td>${preview413First32Colored(item)}</td>
+        `;
+        rowsEl.appendChild(tr);
+        rowEls.push(tr);
+      }
+    }
+
+    function updateFormula(current, previous) {
+      tracePayload.innerHTML = `din20 = 20'b${bitSpans(current.encoded.slice(0, 20), previous.encoded.slice(0, 20), true)}`;
+      traceGroup.innerHTML = `raw_fifo push 20bit`;
+      traceUsed.innerHTML = `pop group = 7'b${bitSpans(current.sampleGroupOut, previous.sampleGroupOut, true)}`;
+      traceReplace.textContent = current.replaceEn ? "1'b1" : "1'b0";
+      traceLabel.innerHTML = `group_out = 7'b${bitSpans(current.sampleGroupIn, previous.sampleGroupIn)}`;
+      traceH.innerHTML = `pass group = 7'b${bitSpans(current.sampleGroupOut, previous.sampleGroupOut, true)}`;
+      traceHeader.innerHTML = `rgb_fifo push 7bit effective`;
+      traceZero.innerHTML = current.sampleGroupOut.slice(0, 6) === current.label
+        ? `counter += 7`
+        : "counter += 7";
+      traceOne.innerHTML = `rgb_data = 24\x27b${bitSpans(current.payload.slice(0, 20), previous.payload.slice(0, 20))}`;
+      traceDout.innerHTML = `rgb_cnt >= 24 -> rgb_valid`;
+
+      for (const line of formulaLines) {
+        const step = Number(line.dataset.step);
+        line.classList.toggle("active", step === formulaStep || step === formulaStep + 1);
+      }
+    }
+
+    function showCode(nextCode, scrollRow = true, nextFormulaStep = 0) {
+      previousCode = code;
+      code = (nextCode + 256) & 0xff;
+      formulaStep = nextFormulaStep;
+      const current = cases[code];
+      const previous = cases[previousCode];
+
+      rowEls.forEach((rowEl, index) => rowEl.classList.toggle("active", index === code));
+      if (scrollRow) {
+        const active = rowEls[code];
+        const targetTop = active.offsetTop - tableWrap.clientHeight * 0.42;
+        tableWrap.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+      }
+
+      decValue.textContent = String(code);
+      byteValue.innerHTML = bitSpans(byteBitsLsbFirst(code), byteBitsLsbFirst(previousCode), true);
+      headerValue.innerHTML = bitSpans(current.header, previous.header);
+      labelValue.innerHTML = bitSpans(current.label, previous.label);
+      replaceValue.textContent = current.replaceEn ? "YES" : "NO";
+      replaceValue.className = current.replaceEn ? "yes" : "no";
+      largeHex.textContent = `8'h${hex(code, 2)}`;
+      largeDec.textContent = `DEC ${code}`;
+      preview420.innerHTML = preview420Colored(current);
+      preview413.innerHTML = preview413Colored(current);
+      ruleText.textContent = current.replaceEn
+        ? `group[${current.sampleIndex}] ${current.sampleGroupOut} → ${current.sampleGroupIn}`
+        : `no replace, header = H + 6個~H`;
+
+      updateBitStrip(byteBits, byteBitsLsbFirst(code), byteBitsLsbFirst(previousCode), true);
+      updateBitStrip(headerBits, current.header, previous.header);
+      updateBitStrip(groupInBits, current.sampleGroupOut, previous.sampleGroupOut, true);
+      updateBitStrip(groupOutBits, current.sampleGroupIn, previous.sampleGroupIn);
+      updateFormula(current, previous);
+    }
+
+    function setPlaying(value) {
+      playing = value;
+      playBtn.textContent = playing ? "Pause" : "Play";
+      lastTime = performance.now();
+      carryMs = 0;
+    }
+
+    function cleanupEmbeddedFrame(frame) {
+      const doc = frame.contentDocument;
+      if (!doc) return;
+      let style = doc.getElementById("longcode-tab-cleanup");
+      if (!style) {
+        style = doc.createElement("style");
+        style.id = "longcode-tab-cleanup";
+        const isLogic = (frame.getAttribute("src") || "").includes("chpi_decoder_gate_logic");
+        style.textContent = `
+          .page-tabs { display: none !important; }
+          body { background: #fff !important; }
+          ${isLogic ? `
+            html, body { overflow-x: hidden !important; }
+            main { padding: 4px !important; gap: 5px !important; max-width: none !important; }
+            header { padding: 6px 7px !important; gap: 2px !important; box-shadow: none !important; }
+            h1 { font-size: 14px !important; line-height: 1.15 !important; }
+            .lead { font-size: 9px !important; line-height: 1.25 !important; }
+            section { border-radius: 6px !important; box-shadow: none !important; }
+            .title { padding: 5px 6px !important; font-size: 12px !important; line-height: 1.2 !important; }
+            .canvas { padding: 3px !important; max-height: none !important; overflow: visible !important; }
+            .canvas svg { display: none !important; }
+            .mobile-flow { display: grid !important; gap: 4px !important; }
+            .mobile-step {
+              padding: 7px 8px !important;
+              border-radius: 6px !important;
+              font-size: 10px !important;
+              line-height: 1.25 !important;
+            }
+            .mobile-step strong { margin-bottom: 2px !important; font-size: 12px !important; line-height: 1.2 !important; }
+            .mobile-step span { font-size: 10px !important; line-height: 1.25 !important; }
+            .mobile-arrow { font-size: 13px !important; line-height: 1 !important; }
+            .top-label { font-size: 17px !important; }
+            .blk-title { font-size: 18px !important; }
+            .blk-sub { font-size: 13px !important; }
+            .mini-title { font-size: 14px !important; }
+            .mini-sub { font-size: 11px !important; }
+            .label { font-size: 14px !important; }
+            .cards { grid-template-columns: 1fr !important; gap: 4px !important; padding: 5px !important; }
+            .card { padding: 5px 6px !important; font-size: 10px !important; line-height: 1.25 !important; }
+            .card strong { margin-bottom: 2px !important; font-size: 11px !important; }
+            .table-wrap { padding: 4px !important; max-height: none !important; overflow: visible !important; }
+            .table-wrap table { display: none !important; }
+            .mobile-timing { display: grid !important; gap: 4px !important; }
+            .mobile-timing-row { padding: 6px 7px !important; border-radius: 6px !important; }
+            .mobile-timing-row strong { font-size: 11px !important; line-height: 1.2 !important; }
+            .mobile-timing-row span { margin-top: 2px !important; font-size: 9.5px !important; line-height: 1.25 !important; }
+            table { width: 100% !important; min-width: 0 !important; font-size: 8px !important; table-layout: fixed !important; }
+            th, td { padding: 3px 1px !important; line-height: 1.16 !important; word-break: break-word !important; }
+            .verilog-grid { grid-template-columns: 1fr !important; gap: 5px !important; padding: 5px !important; }
+            .code-box { border-radius: 6px !important; }
+            .code-box pre {
+              padding: 6px !important;
+              font-size: 8.5px !important;
+              line-height: 1.18 !important;
+              white-space: pre-wrap !important;
+              overflow-wrap: anywhere !important;
+              tab-size: 2 !important;
+            }
+            .verilog-note { padding: 0 6px 6px !important; font-size: 9px !important; line-height: 1.25 !important; }
+          ` : ""}
+        `;
+        doc.head.appendChild(style);
+      }
+    }
+
+    function setPage(page, updateHash = true) {
+      pageTabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.page === page));
+      pageViews.forEach((view) => {
+        view.hidden = view.dataset.view !== page;
+      });
+      if (page !== "run") setPlaying(false);
+      if (updateHash) {
+        const nextHash = `#${page}`;
+        if (location.hash !== nextHash) history.replaceState(null, "", nextHash);
+      }
+    }
+
+    function tick(now) {
+      if (playing) {
+        const interval = 1000 / Number(speedEl.value);
+        carryMs += now - lastTime;
+        while (carryMs >= interval) {
+          if (formulaStep < 28) {
+            formulaStep += 2;
+            updateFormula(cases[code], cases[previousCode]);
+          } else {
+            showCode(code + 1, true, 0);
+          }
+          carryMs -= interval;
+        }
+      }
+      lastTime = now;
+      requestAnimationFrame(tick);
+    }
+
+    playBtn.addEventListener("click", () => setPlaying(!playing));
+    prevBtn.addEventListener("click", () => {
+      setPlaying(false);
+      showCode(code - 1, true, 0);
+    });
+    nextBtn.addEventListener("click", () => {
+      setPlaying(false);
+      showCode(code + 1, true, 0);
+    });
+    resetBtn.addEventListener("click", () => {
+      setPlaying(false);
+      showCode(0, true, 0);
+    });
+    speedEl.addEventListener("input", () => {
+      speedText.textContent = `${speedEl.value}/s`;
+    });
+    pageTabs.forEach((tab) => {
+      tab.addEventListener("click", () => setPage(tab.dataset.page));
+    });
+    embeddedFrames.forEach((frame) => {
+      frame.addEventListener("load", () => {
+        cleanupEmbeddedFrame(frame);
+        setTimeout(() => cleanupEmbeddedFrame(frame), 200);
+      });
+    });
+
+    fillBitRows();
+    buildRows();
+    showCode(0, false, 0);
+    const initialPage = ["run", "flow", "real", "logic", "rgb"].includes(location.hash.slice(1))
+      ? location.hash.slice(1)
+      : "run";
+    setPage(initialPage, false);
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>
+
+
