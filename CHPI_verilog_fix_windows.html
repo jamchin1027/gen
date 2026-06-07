@@ -46,7 +46,6 @@
     }
     .mobile main {
       max-width: none;
-      min-width: 1040px;
     }
     header {
       display: grid;
@@ -149,7 +148,6 @@
       grid-template-columns: repeat(7, minmax(142px, 1fr));
       gap: 8px;
       padding: 10px;
-      min-width: 1010px;
     }
     .flow-step {
       position: relative;
@@ -174,9 +172,8 @@
     }
     .fix-head, .fix-row {
       display: grid;
-      grid-template-columns: minmax(250px, 0.78fr) minmax(250px, 0.78fr) minmax(340px, 1fr);
+      grid-template-columns: minmax(0, 0.78fr) minmax(0, 0.78fr) minmax(0, 1fr);
       gap: 8px;
-      min-width: 900px;
     }
     .fix-head {
       padding: 9px 10px 0;
@@ -213,6 +210,7 @@
       padding: 6px 9px;
       border: 1px solid #202938;
       white-space: pre-wrap;
+      overflow-wrap: anywhere;
     }
     .fix-code.before pre { box-shadow: inset 4px 0 0 var(--bad); }
     .fix-code.after pre { box-shadow: inset 4px 0 0 var(--good); }
@@ -273,7 +271,6 @@
       grid-template-columns: repeat(4, minmax(190px, 1fr));
       gap: 8px;
       padding: 10px;
-      min-width: 820px;
     }
     .area-box {
       border-left: 4px solid var(--area);
@@ -304,7 +301,6 @@
       grid-template-columns: minmax(320px, 0.78fr) minmax(520px, 1.22fr);
       gap: 9px;
       padding: 10px;
-      min-width: 860px;
     }
     .sim-box {
       border: 1px solid var(--line);
@@ -323,7 +319,53 @@
     }
     @media (max-width: 1100px) {
       .desktop main { max-width: none; }
-      .desktop header { grid-template-columns: 360px 1fr; min-width: 1040px; }
+      .desktop header { grid-template-columns: 1fr; }
+      .desktop .cards { grid-template-columns: 1fr; }
+      .desktop .fix-head {
+        display: none;
+      }
+      .desktop .fix-row {
+        grid-template-columns: 1fr;
+      }
+      .desktop .fix-code,
+      .desktop .fix-notes {
+        min-width: 0;
+      }
+      .desktop .flow {
+        grid-template-columns: 1fr;
+      }
+      .desktop .flow-step:not(:last-child)::after {
+        content: "";
+      }
+      .desktop .area-grid,
+      .desktop .sim-grid {
+        grid-template-columns: 1fr;
+      }
+      .mobile main {
+        min-width: 0;
+      }
+      .mobile header {
+        grid-template-columns: 1fr;
+      }
+      .mobile .cards {
+        grid-template-columns: 1fr;
+      }
+      .mobile .flow {
+        grid-template-columns: 1fr;
+      }
+      .mobile .flow-step:not(:last-child)::after {
+        content: "";
+      }
+      .mobile .fix-head {
+        display: none;
+      }
+      .mobile .fix-row {
+        grid-template-columns: 1fr;
+      }
+      .mobile .area-grid,
+      .mobile .sim-grid {
+        grid-template-columns: 1fr;
+      }
     }
     </style>
 </head>
