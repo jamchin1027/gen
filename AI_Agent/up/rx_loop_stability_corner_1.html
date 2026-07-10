@@ -1,0 +1,2501 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RX Loop Stability Evaluator</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #eef3f7;
+      --panel: #ffffff;
+      --text: #16202a;
+      --muted: #667382;
+      --line: #d7e0ea;
+      --soft-line: #e9eef4;
+      --accent: #1565c0;
+      --accent-2: #087443;
+      --accent-soft: #eaf3ff;
+      --danger: #b42318;
+      --warn: #b86e00;
+      --good: #087443;
+      --shadow: 0 10px 26px rgba(25, 39, 52, 0.08);
+      --shadow-soft: 0 3px 10px rgba(25, 39, 52, 0.06);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+    }
+
+    header {
+      padding: 18px 24px 14px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: 0 1px 0 rgba(255,255,255,0.8);
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(300px, 360px) minmax(0, 1080px);
+      gap: 18px;
+      padding: 18px;
+      justify-content: center;
+    }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    main > section:first-child {
+      position: sticky;
+      top: 16px;
+      align-self: start;
+      max-height: calc(100vh - 32px);
+      overflow: auto;
+    }
+
+    h2 {
+      margin: 16px 0 12px;
+      font-size: 15px;
+      color: #243241;
+    }
+
+    h2:first-child {
+      margin-top: 0;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      background: #f9fbfd;
+      color: var(--text);
+      border-radius: 6px;
+      min-height: 34px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 120ms ease, border-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
+    }
+
+    button:hover {
+      background: #f1f6fb;
+      border-color: #a9bfd5;
+    }
+
+    button.active {
+      background: #eaf3ff;
+      border-color: #7db3ef;
+      color: #0d4f99;
+      font-weight: 700;
+      box-shadow: inset 0 0 0 1px rgba(21,101,192,0.12);
+    }
+
+    button:disabled {
+      cursor: wait;
+      color: var(--muted);
+      background: #f2f5f8;
+    }
+
+    label {
+      display: grid;
+      gap: 5px;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    input, select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px 10px;
+      color: var(--text);
+      background: white;
+      font-size: 13px;
+      transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
+    }
+
+    input:focus, select:focus {
+      border-color: #7db3ef;
+      box-shadow: 0 0 0 3px rgba(125,179,239,0.28);
+      outline: none;
+    }
+
+    input:disabled {
+      color: #44515f;
+      background: #f3f6f9;
+    }
+
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .results {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fbfdff;
+      min-height: 86px;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.9) inset;
+    }
+
+    .metric .name {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .metric .value {
+      font-size: 24px;
+      font-weight: 700;
+      white-space: nowrap;
+      line-height: 1.1;
+    }
+
+    .metric .hint {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .ok { color: var(--good); }
+    .warn { color: var(--warn); }
+    .bad { color: var(--danger); }
+
+    .plots {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .plotbox {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fbfdff;
+      box-shadow: var(--shadow-soft);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid #d7dee8;
+      border-radius: 6px;
+      background: white;
+    }
+
+    .arch {
+      width: 100%;
+      height: auto;
+      display: block;
+      border: 1px solid #d7dee8;
+      border-radius: 8px;
+      background: #fbfcfe;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .arch .stage {
+      fill: #ffffff;
+      stroke: #aab6c2;
+      stroke-width: 1.5;
+    }
+
+    .arch .stage.active {
+      fill: #eaf3ff;
+      stroke: #1565c0;
+      stroke-width: 2.5;
+    }
+
+    .arch .block {
+      fill: #ffffff;
+      stroke: #c5ced8;
+      stroke-width: 1.2;
+    }
+
+    .arch .path-fast {
+      stroke: #1565c0;
+      stroke-width: 2.2;
+      fill: none;
+    }
+
+    .arch .path-slow {
+      stroke: #087443;
+      stroke-width: 2.2;
+      fill: none;
+    }
+
+    .arch .arrow {
+      stroke: #536170;
+      stroke-width: 1.8;
+      fill: none;
+      marker-end: url(#arrowHead);
+    }
+
+    .arch text {
+      font-family: Arial, Helvetica, sans-serif;
+      fill: #16202a;
+    }
+
+    .arch .small-text {
+      fill: #667382;
+      font-size: 12px;
+    }
+
+    .arch .label {
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .plot-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: baseline;
+      margin-bottom: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #243241;
+    }
+
+    .range {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 400;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+      margin-top: 14px;
+      border-top: 1px solid var(--soft-line);
+      padding-top: 12px;
+    }
+
+    .wide {
+      grid-column: 1 / -1;
+    }
+
+    .rec-list {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .rec {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fbfdff;
+      min-height: 72px;
+      cursor: pointer;
+      transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+    }
+
+    .rec:hover {
+      border-color: #8fbde9;
+      box-shadow: var(--shadow-soft);
+      transform: translateY(-1px);
+    }
+
+    .rec .title {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .rec .body {
+      font-size: 14px;
+      font-weight: 700;
+      color: #243241;
+    }
+
+    .rec .small {
+      margin-top: 5px;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    .robust-panel {
+      border: 1px solid #8fbde9;
+      border-radius: 8px;
+      background: linear-gradient(180deg, #f5faff 0%, #ffffff 100%);
+      padding: 14px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .robust-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .robust-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0d4f99;
+    }
+
+    .robust-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .robust-card {
+      border: 1px solid #b9d7f4;
+      border-radius: 8px;
+      background: #ffffff;
+      padding: 12px;
+      cursor: pointer;
+      min-height: 110px;
+      transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+    }
+
+    .robust-card:hover {
+      border-color: #5c9edf;
+      box-shadow: var(--shadow-soft);
+      transform: translateY(-1px);
+    }
+
+    .robust-card .stage-name {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .robust-card .codes {
+      font-size: 22px;
+      font-weight: 700;
+      color: #0d4f99;
+      white-space: nowrap;
+    }
+
+    .robust-card .detail {
+      margin-top: 7px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .formula {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdff;
+      padding: 12px;
+      margin-bottom: 14px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .formula-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .formula-card {
+      border: 1px solid #d7dee8;
+      border-radius: 8px;
+      padding: 10px;
+      background: #ffffff;
+      min-height: 112px;
+    }
+
+    .formula-card strong {
+      display: block;
+      color: var(--text);
+      margin-bottom: 5px;
+      font-size: 13px;
+    }
+
+    .formula code {
+      color: #16202a;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    @media (max-width: 900px) {
+      main { grid-template-columns: 1fr; }
+      main > section:first-child {
+        position: static;
+        max-height: none;
+        overflow: visible;
+      }
+      .plots { grid-template-columns: 1fr; }
+      .results { grid-template-columns: 1fr; }
+      .rec-list { grid-template-columns: 1fr; }
+      .robust-grid { grid-template-columns: 1fr; }
+      .formula-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>RX Loop Stability Evaluator</h1>
+    <div class="sub">Fast-lock, fine-lock, and CDR open-loop phase margin / closed-loop bandwidth calculator.</div>
+  </header>
+
+  <main>
+    <section>
+      <h2>Stage</h2>
+      <div class="tabs">
+        <button id="fastBtn" class="active" data-stage="fast">Fast Lock</button>
+        <button id="fineBtn" data-stage="fine">Fine Lock</button>
+        <button id="cdrBtn" data-stage="cdr">CDR</button>
+      </div>
+
+      <div class="grid2">
+        <label>ICP code
+          <select id="icpCode"></select>
+        </label>
+        <label>LPF / R1 code
+          <select id="rCode"></select>
+        </label>
+      </div>
+
+      <div class="grid2">
+        <label>KVCO source
+          <select id="kvcoMode">
+            <option value="lookup">Lookup from corner/data rate</option>
+            <option value="manual">Manual input</option>
+          </select>
+        </label>
+        <label>KVCO (Hz/V)
+          <input id="kvco" type="number" step="1e6">
+        </label>
+      </div>
+
+      <div class="grid2">
+        <label>Divider N
+          <input id="divider" type="number" step="1">
+        </label>
+      </div>
+
+      <div class="grid2">
+        <label>C1 (F)
+          <input id="c1" type="number" step="1e-15">
+        </label>
+        <label>C2 (F)
+          <input id="c2" type="number" step="1e-15">
+        </label>
+      </div>
+      <label>Data rate (Gbps)
+        <input id="dataRate" type="number" step="0.1">
+      </label>
+
+      <h2>Corner / Temperature</h2>
+      <label>Corner preset
+        <select id="cornerPreset">
+          <option value="tt">TT 65C</option>
+          <option value="ss_cold">SS -40C</option>
+          <option value="ss_hot">SS 125C</option>
+          <option value="ff_cold">FF -40C</option>
+          <option value="ff_hot">FF 125C</option>
+        </select>
+      </label>
+      <div class="grid2">
+        <label>Temperature (C)
+          <input id="temperatureC" type="number" step="1" value="65" disabled>
+        </label>
+      </div>
+
+      <div id="fineControls">
+        <div class="grid2">
+          <label>R3 (Ohm)
+            <input id="r3" type="number" step="1000">
+          </label>
+          <label>C3 (F)
+            <input id="c3" type="number" step="1e-15">
+          </label>
+        </div>
+        <div class="grid2">
+          <label>K1 numerator
+            <input id="k1n" type="number" step="1">
+          </label>
+          <label>K2 numerator
+            <input id="k2n" type="number" step="1">
+          </label>
+        </div>
+      </div>
+
+      <div id="cdrControls">
+        <div class="grid2">
+          <label>Transition density
+            <input id="transitionDensity" type="number" step="0.01">
+          </label>
+          <label>Jitter RMS (s)
+            <input id="jitter" type="number" step="1e-13">
+          </label>
+        </div>
+        <div class="grid2">
+          <label>BBPD update interval (UI)
+            <input id="bbpdUpdateUi" type="number" step="0.1" min="0.1">
+          </label>
+          <label>UP/DN pulse width (UI)
+            <input id="bbpdPulseUi" type="number" step="0.1" min="0">
+          </label>
+        </div>
+        <label>BBPD gain scale
+          <input id="bbpdGainScale" type="number" step="0.05" min="0">
+        </label>
+      </div>
+
+      <h2>Targets</h2>
+      <div class="grid2">
+        <label>Minimum PM (deg)
+          <input id="pmTarget" type="number" step="1" value="60">
+        </label>
+        <label>Target BW (MHz)
+          <input id="bwTarget" type="number" step="0.1" value="4">
+        </label>
+      </div>
+      <div class="grid2">
+        <label>Minimum BW (MHz)
+          <input id="bwMin" type="number" step="0.1" value="0">
+        </label>
+        <label>Maximum BW (MHz)
+          <input id="bwMax" type="number" step="0.1" value="1000">
+        </label>
+      </div>
+      <label>Heatmap text
+        <select id="heatmapTextMode">
+          <option value="pass">PASS / NG</option>
+          <option value="value">PM / BW value</option>
+        </select>
+      </label>
+
+      <h2>Fast Lock Detector</h2>
+      <div class="grid2">
+        <label>Feedback clk (MHz)
+          <input id="fbClkMHz" type="number" step="1" value="166.667">
+        </label>
+        <label>Hold count
+          <input id="fastHoldCount" type="number" step="1" value="4096">
+        </label>
+      </div>
+      <div class="grid2">
+        <label>Lock threshold (ps)
+          <input id="lockThresholdPs" type="number" step="1" value="50">
+        </label>
+        <label>Settling factor
+          <input id="settleFactor" type="number" step="0.5" value="5">
+        </label>
+      </div>
+
+      <button id="recalc" style="width: 100%; margin-top: 4px;">Recalculate</button>
+
+      <div class="note">
+        The heatmaps sweep ICP code horizontally and LPF/R1 code vertically. Bandwidth is the closed-loop -3 dB bandwidth of <code>H/(1+H)</code>.
+      </div>
+    </section>
+
+    <section>
+      <svg class="arch" viewBox="0 0 980 515" role="img" aria-label="RX loop circuit architecture diagram">
+        <defs>
+          <marker id="arrowHead" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+            <polygon points="0 0, 9 3.5, 0 7" fill="#536170"></polygon>
+          </marker>
+        </defs>
+
+        <text x="18" y="26" class="label">RX Loop Circuit Architecture</text>
+        <text x="18" y="45" class="small-text">Charge-pump PLL/CDR loop model used for PM and closed-loop bandwidth evaluation</text>
+
+        <rect id="archFast" class="stage active" x="570" y="18" width="110" height="34" rx="7"></rect>
+        <text x="625" y="40" text-anchor="middle" class="small-text">Fast: H1</text>
+        <rect id="archFine" class="stage" x="690" y="18" width="120" height="34" rx="7"></rect>
+        <text x="750" y="40" text-anchor="middle" class="small-text">Fine: H1+H2</text>
+        <rect id="archCdr" class="stage" x="820" y="18" width="110" height="34" rx="7"></rect>
+        <text x="875" y="40" text-anchor="middle" class="small-text">CDR: BBPD</text>
+
+        <text x="36" y="104" class="small-text">ref / data edge</text>
+        <path class="arrow" d="M30 132 L88 132"></path>
+
+        <rect class="block" x="88" y="94" width="112" height="76" rx="8"></rect>
+        <text x="144" y="123" text-anchor="middle" class="label">PD</text>
+        <text x="144" y="144" text-anchor="middle" class="small-text">PFD -> BBPD</text>
+        <text x="144" y="160" text-anchor="middle" class="small-text">Kpd</text>
+
+        <path class="arrow" d="M200 132 L258 132"></path>
+        <rect class="block" x="258" y="94" width="115" height="76" rx="8"></rect>
+        <text x="315" y="124" text-anchor="middle" class="label">Charge Pump</text>
+        <text x="315" y="146" text-anchor="middle" class="small-text">ICP code</text>
+
+        <path class="arrow" d="M373 132 L430 132"></path>
+        <circle cx="452" cy="132" r="22" fill="#ffffff" stroke="#c5ced8" stroke-width="1.5"></circle>
+        <text x="452" y="136" text-anchor="middle" class="label">Σ</text>
+
+        <rect class="block" x="520" y="70" width="205" height="178" rx="8"></rect>
+        <text x="622" y="94" text-anchor="middle" class="label">Passive Loop Filter</text>
+
+        <path class="path-fast" d="M474 132 L556 132"></path>
+        <circle cx="556" cy="132" r="4" fill="#1565c0"></circle>
+        <text x="548" y="121" text-anchor="end" class="small-text">Vctrl</text>
+        <path class="path-fast" d="M556 132 L652 132"></path>
+        <text x="610" y="123" text-anchor="middle" class="small-text">H1 main path</text>
+
+        <path class="path-fast" d="M580 132 L580 145"></path>
+        <path class="path-fast" d="M580 145 L572 151 L588 157 L572 163 L588 169 L572 175 L580 181"></path>
+        <path class="path-fast" d="M580 181 L580 195"></path>
+        <path class="path-fast" d="M565 195 L595 195"></path>
+        <path class="path-fast" d="M565 203 L595 203"></path>
+        <path class="path-fast" d="M580 203 L580 222"></path>
+        <path class="path-fast" d="M565 222 L595 222"></path>
+        <path class="path-fast" d="M570 228 L590 228"></path>
+        <path class="path-fast" d="M575 234 L585 234"></path>
+        <text x="596" y="164" class="small-text">R1</text>
+        <text x="596" y="210" class="small-text">C1</text>
+
+        <path class="path-fast" d="M646 132 L646 195"></path>
+        <path class="path-fast" d="M631 195 L661 195"></path>
+        <path class="path-fast" d="M631 203 L661 203"></path>
+        <path class="path-fast" d="M646 203 L646 222"></path>
+        <path class="path-fast" d="M631 222 L661 222"></path>
+        <path class="path-fast" d="M636 228 L656 228"></path>
+        <path class="path-fast" d="M641 234 L651 234"></path>
+        <text x="628" y="188" text-anchor="middle" class="small-text">C2</text>
+
+        <path class="path-slow" d="M652 132 L662 132"></path>
+        <path class="path-slow" d="M662 132 L668 124 L674 140 L680 124 L686 140 L692 124 L698 132"></path>
+        <path class="path-slow" d="M698 132 L724 132"></path>
+        <circle cx="724" cy="132" r="3.5" fill="#087443"></circle>
+        <text x="678" y="118" text-anchor="middle" class="small-text">R3</text>
+        <text x="724" y="112" text-anchor="middle" class="small-text">KVCO ctrl</text>
+        <path class="path-slow" d="M724 132 L724 160"></path>
+        <path class="path-slow" d="M709 160 L739 160"></path>
+        <path class="path-slow" d="M709 168 L739 168"></path>
+        <path class="path-slow" d="M724 168 L724 186"></path>
+        <path class="path-slow" d="M710 186 L738 186"></path>
+        <path class="path-slow" d="M714 180 L734 180"></path>
+        <path class="path-slow" d="M718 174 L730 174"></path>
+        <text x="724" y="200" text-anchor="middle" class="small-text">VDD</text>
+        <text x="704" y="168" text-anchor="end" class="small-text">C3</text>
+        <text x="650" y="240" text-anchor="middle" class="small-text">H2 fine path</text>
+
+        <path class="arrow" d="M724 132 L758 132"></path>
+        <rect class="block" x="758" y="94" width="112" height="76" rx="8"></rect>
+        <text x="814" y="123" text-anchor="middle" class="label">VCO</text>
+        <text x="814" y="145" text-anchor="middle" class="small-text">KVCO / s</text>
+
+        <path class="arrow" d="M870 132 L920 132"></path>
+        <text x="924" y="126" class="small-text">clock</text>
+        <text x="924" y="145" class="small-text">output</text>
+
+        <path class="arrow" d="M814 170 L814 280 L144 280 L144 170"></path>
+        <rect class="block" x="734" y="250" width="158" height="48" rx="8"></rect>
+        <text x="813" y="271" text-anchor="middle" class="small-text">Divider / sampler</text>
+        <text x="813" y="288" text-anchor="middle" class="small-text">1/N feedback</text>
+
+        <text x="86" y="214" class="small-text">Fast: H(s)=H1</text>
+        <text x="86" y="232" class="small-text">Fine/CDR: H(s)=H1+H2</text>
+        <text x="86" y="250" class="small-text">Closed-loop BW from T=H/(1+H)</text>
+        <text x="18" y="318" class="small-text">Fast/fine use PFD. When fine_lock asserts, the loop switches to BBPD for CDR tracking; CDR Kpd depends on data transitions and jitter.</text>
+
+        <rect class="block" x="28" y="340" width="924" height="154" rx="8"></rect>
+        <text x="46" y="363" class="label">Lock Sequence Timing</text>
+
+        <path d="M92 404 L924 404" stroke="#aab6c2" stroke-width="1.2"></path>
+        <path d="M92 390 L92 456" stroke="#d7dee8" stroke-width="1.2"></path>
+        <path d="M568 390 L568 456" stroke="#d7dee8" stroke-width="1.2"></path>
+        <path d="M687 390 L687 456" stroke="#d7dee8" stroke-width="1.2"></path>
+        <path d="M925 390 L925 456" stroke="#d7dee8" stroke-width="1.2"></path>
+
+        <rect x="92" y="392" width="476" height="24" fill="#eaf3ff" stroke="#7db3ef"></rect>
+        <rect x="568" y="392" width="119" height="24" fill="#eef8f2" stroke="#83c7a4"></rect>
+        <rect x="687" y="392" width="238" height="24" fill="#fff7df" stroke="#e5be62"></rect>
+        <text x="330" y="409" text-anchor="middle" class="small-text">Fast frequency align + 4096 counts</text>
+        <text x="628" y="409" text-anchor="middle" class="small-text">Fine 1024</text>
+        <text x="806" y="409" text-anchor="middle" class="small-text">BBPD CDR 2048 counts</text>
+
+        <path d="M92 434 L568 434 L568 424 L925 424" fill="none" stroke="#1565c0" stroke-width="2.2"></path>
+        <text x="46" y="435" class="small-text">fast_lock</text>
+        <text x="572" y="423" class="small-text">1</text>
+
+        <path d="M92 452 L687 452 L687 442 L925 442" fill="none" stroke="#087443" stroke-width="2.2"></path>
+        <text x="46" y="453" class="small-text">fine_lock</text>
+        <text x="691" y="441" class="small-text">1</text>
+
+        <path d="M92 470 L925 470 L925 460 L948 460" fill="none" stroke="#b86e00" stroke-width="2.2"></path>
+        <text x="46" y="471" class="small-text">cr_done</text>
+        <text x="902" y="459" class="small-text">1</text>
+
+        <text x="92" y="389" text-anchor="middle" class="small-text">freq aligned</text>
+        <text x="568" y="389" text-anchor="middle" class="small-text">enter fine</text>
+        <text x="687" y="389" text-anchor="middle" class="small-text">switch to BBPD</text>
+        <text x="925" y="389" text-anchor="middle" class="small-text">done</text>
+      </svg>
+
+      <div class="formula">
+        <strong style="color:#16202a;">Loop Equations Used By This Tool</strong>
+        <div>Phase margin is computed from the selected stage open-loop transfer <code>H(jw)</code> at <code>|H(jwcp)|=1</code>: <code>PM = 180deg + angle(H(jwcp))</code>. Closed-loop bandwidth is the -3 dB frequency of <code>T(s)=H(s)/(1+H(s))</code>.</div>
+        <div>Fast-lock estimate assumes <code>lock_flag=1</code> when ref/fb rising-edge error is below threshold, then requires <code>hold_count</code> feedback-clock cycles: <code>T_hold=hold_count/Ffb</code>, <code>T_settle≈settling_factor/(2*pi*BWcl)</code>.</div>
+        <div class="formula-grid">
+          <div class="formula-card">
+            <strong>Fast Lock</strong>
+            <div><code>H(s)=H1(s)</code></div>
+            <div><code>H1=(ICP*Kpd*KVCO*(R1*C1*s+1))/(N*s^2*(R1*C1*C2*s+C1+C2))</code></div>
+          </div>
+          <div class="formula-card">
+            <strong>Fine Lock</strong>
+            <div><code>H(s)=H1(s)+H2(s)</code></div>
+            <div><code>H1=(ICP*K1*KVCO*(R1*C1*s+1))/(N*s^2*(R1*C1*C2*s+C1+C2))</code></div>
+            <div><code>H2=(ICP*K2*KVCO*(R1*C1*s+1))/(N*s^2*(R1*C1*C2*R3*C3*s^2+(R1*C1*C2+(C1+C2)*R3*C3)*s+(C1+C2)))</code></div>
+            <div><code>K1=3/19</code>, <code>K2=16/19</code></div>
+          </div>
+          <div class="formula-card">
+            <strong>CDR</strong>
+            <div><code>fine_lock=1</code> switches detector from PFD to BBPD.</div>
+            <div><code>Kbbpd=TD*2/(sqrt(2*pi)*jitter_rms_UI)</code></div>
+            <div><code>ICP_static=(|IUP|+|IDN|)/2</code></div>
+            <div><code>ICP_eff=(ICP_static/(2*pi))*(pulse_width_UI/update_interval_UI)*BBPD_scale*Kbbpd</code></div>
+            <div><code>H(s)=H1(s)+H2(s)</code>, <code>N=1</code></div>
+            <div><code>H1=(ICP_eff*K1*KVCO*(R1*C1*s+1))/(s^2*(R1*C1*C2*s+C1+C2))</code></div>
+            <div><code>H2=(ICP_eff*K2*KVCO*(R1*C1*s+1))/(s^2*(R1*C1*C2*R3*C3*s^2+(R1*C1*C2+(C1+C2)*R3*C3)*s+(C1+C2)))</code></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="robust-panel">
+        <div class="robust-head">
+          <div>
+            <div class="robust-title">Robust Picks</div>
+            <div class="range">All corners, 1.0-4.5 Gbps, click a card to apply</div>
+          </div>
+          <button id="robustSearch">Find Picks</button>
+        </div>
+        <div class="robust-grid">
+          <div id="robustFast" class="robust-card" data-stage="fast">
+            <div class="stage-name">Fast Lock</div>
+            <div class="codes">--</div>
+            <div class="detail">Run robust search</div>
+          </div>
+          <div id="robustFine" class="robust-card" data-stage="fine">
+            <div class="stage-name">Fine Lock</div>
+            <div class="codes">--</div>
+            <div class="detail">Run robust search</div>
+          </div>
+          <div id="robustCdr" class="robust-card" data-stage="cdr">
+            <div class="stage-name">CDR</div>
+            <div class="codes">--</div>
+            <div class="detail">Run robust search</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="results">
+        <div class="metric">
+          <div class="name">Phase Margin</div>
+          <div id="pmValue" class="value">--</div>
+          <div id="pmHint" class="hint">--</div>
+        </div>
+        <div class="metric">
+          <div class="name">Closed-Loop Bandwidth</div>
+          <div id="bwValue" class="value">--</div>
+          <div id="bwHint" class="hint">--</div>
+        </div>
+        <div class="metric">
+          <div class="name">Selected Codes</div>
+          <div id="codeValue" class="value">--</div>
+          <div id="codeHint" class="hint">--</div>
+        </div>
+        <div class="metric">
+          <div class="name">Target Status</div>
+          <div id="targetValue" class="value">--</div>
+          <div id="targetHint" class="hint">--</div>
+        </div>
+        <div class="metric">
+          <div class="name">Fast Lock Estimate</div>
+          <div id="fastLockValue" class="value">--</div>
+          <div id="fastLockHint" class="hint">--</div>
+        </div>
+        <div class="metric">
+          <div class="name">Settling Time</div>
+          <div id="settlingValue" class="value">--</div>
+          <div id="settlingHint" class="hint">--</div>
+        </div>
+        <div class="metric">
+          <div class="name">Transient Shape</div>
+          <div id="shapeValue" class="value">--</div>
+          <div id="shapeHint" class="hint">--</div>
+        </div>
+      </div>
+
+      <div class="rec-list">
+        <div id="recBalanced" class="rec">
+          <div class="title">Balanced Pick</div>
+          <div class="body">--</div>
+          <div class="small">--</div>
+        </div>
+        <div id="recMaxPm" class="rec">
+          <div class="title">Highest PM In Target</div>
+          <div class="body">--</div>
+          <div class="small">--</div>
+        </div>
+        <div id="recBw" class="rec">
+          <div class="title">Closest BW Target</div>
+          <div class="body">--</div>
+          <div class="small">--</div>
+        </div>
+      </div>
+
+      <div class="plots">
+        <div class="plotbox">
+          <div class="plot-title">
+            <span>Phase Margin Heatmap</span>
+            <span id="pmRange" class="range"></span>
+          </div>
+          <canvas id="pmCanvas" width="500" height="500"></canvas>
+        </div>
+        <div class="plotbox">
+          <div class="plot-title">
+            <span>Bandwidth Heatmap</span>
+            <span id="bwRange" class="range"></span>
+          </div>
+          <canvas id="bwCanvas" width="500" height="500"></canvas>
+        </div>
+      </div>
+      <div class="plotbox wide" style="margin-top: 14px;">
+        <div class="plot-title">
+          <span>Bode Plot For Selected Codes</span>
+          <span id="bodeInfo" class="range"></span>
+        </div>
+        <canvas id="bodeCanvas" width="980" height="640"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const stages = {
+      fast: {
+        name: "Fast Lock",
+        r: [1e9, 65.1e3, 32.5e3, 21.7e3, 16.2e3, 13e3, 10.8e3, 9.3e3, 8.1e3, 7.2e3, 6.5e3, 5.9e3, 5.4e3, 5e3, 4.6e3, 4.3e3],
+        kvco: 2.2e9,
+        kvcoMult: 1,
+        n: 6,
+        c1: 32.8e-12,
+        c2: 0.73e-12,
+        r3: 933e3,
+        c3: 9.6e-12,
+        k1n: 1,
+        k2n: 0,
+        cdr: false,
+        dual: false
+      },
+      fine: {
+        name: "Fine Lock",
+        r: [1e9, 65.1e3, 32.5e3, 21.7e3, 16.2e3, 13e3, 10.8e3, 9.3e3, 8.1e3, 7.2e3, 6.5e3, 5.9e3, 5.4e3, 5e3, 4.6e3, 4.3e3],
+        kvco: 2.2e9,
+        kvcoMult: 1,
+        n: 6,
+        c1: 32.8e-12,
+        c2: 0.73e-12,
+        r3: 933e3,
+        c3: 9.6e-12,
+        k1n: 3,
+        k2n: 16,
+        cdr: false,
+        dual: true
+      },
+      cdr: {
+        name: "CDR",
+        r: [21.48e3, 9.273e3, 6.006e3, 4.391e3, 3.618e3, 2.962e3, 2.524e3, 2.187e3, 2.126e3, 1.882e3, 1.696e3, 1.537e3, 1.431e3, 1.316e3, 1.222e3, 1.137e3],
+        kvco: 2.2e9,
+        kvcoMult: 3,
+        n: 1,
+        c1: 32.8e-12,
+        c2: 0.73e-12,
+        r3: 933e3,
+        c3: 9.6e-12,
+        k1n: 3,
+        k2n: 16,
+        transitionDensity: 0.33,
+        jitter: 4e-12,
+        bbpdUpdateUi: 2,
+        bbpdPulseUi: 2,
+        bbpdGainScale: 1,
+        dataRateGbps: 1,
+        cdr: true,
+        dual: true
+      }
+    };
+
+    const cornerPresets = {
+      tt: {
+        label: "TT 65C",
+        temperatureC: 65
+      },
+      ss_cold: {
+        label: "SS -40C",
+        temperatureC: -40
+      },
+      ss_hot: {
+        label: "SS 125C",
+        temperatureC: 125
+      },
+      ff_cold: {
+        label: "FF -40C",
+        temperatureC: -40
+      },
+      ff_hot: {
+        label: "FF 125C",
+        temperatureC: 125
+      }
+    };
+
+    const vcoLookup = {
+      tt: {
+        vctrl: [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9],
+        fvco: [264.6e6, 414.4e6, 587.6e6, 776.4e6, 974e6, 1.176e9, 1.377e9, 1.573e9, 1.76e9]
+      },
+      ss_cold: {
+        vctrl: [0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0, 1.05, 1.1],
+        fvco: [211.9e6, 343e6, 497.6e6, 668.2e6, 848.4e6, 1.032e9, 1.213e9, 1.391e9, 1.556e9]
+      },
+      ss_hot: {
+        vctrl: [0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0, 1.05, 1.1],
+        fvco: [160.7e6, 253.9e6, 365e6, 488.7e6, 620.4e6, 756.7e6, 894.4e6, 1.029e9, 1.158e9, 1.28e9, 1.385e9, 1.47e9]
+      },
+      ff_cold: {
+        vctrl: [0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7],
+        fvco: [148.9e6, 287.4e6, 502.8e6, 768.1e6, 1.068e9, 1.388e9, 1.715e9]
+      },
+      ff_hot: {
+        vctrl: [0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6],
+        fvco: [160.5e6, 413.8e6, 619.1e6, 848.6e6, 1.092e9, 1.34e9, 1.588e9]
+      }
+    };
+
+    const icpLookup = {
+      tt: {
+        iup: [628.8e-9, 1.258e-6, 1.886e-6, 2.515e-6, 3.144e-6, 3.773e-6, 4.401e-6, 5.03e-6, 5.659e-6, 6.288e-6, 6.916e-6, 7.545e-6, 8.174e-6, 8.803e-6, 9.431e-6, 10.06e-6],
+        idn: [-629.1e-9, -1.258e-6, -1.887e-6, -2.516e-6, -3.144e-6, -3.773e-6, -4.402e-6, -5.031e-6, -5.659e-6, -6.288e-6, -6.917e-6, -7.545e-6, -8.174e-6, -8.803e-6, -9.432e-6, -10.06e-6],
+        offset: [302.1e-12, 374.3e-12, 296.4e-12, 366.6e-12, 287.8e-12, 356.3e-12, 274.7e-12, 341.3e-12, 259.9e-12, 324.3e-12, 239.8e-12, 303e-12, 216.9e-12, 278.8e-12, 190.5e-12, 250.3e-12]
+      },
+      ss_cold: {
+        iup: [628e-9, 1.256e-6, 1.884e-6, 2.512e-6, 3.14e-6, 3.768e-6, 4.396e-6, 5.024e-6, 5.652e-6, 6.28e-6, 6.908e-6, 7.536e-6, 8.164e-6, 8.792e-6, 9.42e-6, 10.05e-6],
+        idn: [-628.1e-9, -1.256e-6, -1.884e-6, -2.512e-6, -3.14e-6, -3.768e-6, -4.396e-6, -5.024e-6, -5.652e-6, -6.28e-6, -6.908e-6, -7.536e-6, -8.163e-6, -8.791e-6, -9.419e-6, -10.05e-6],
+        offset: [49.15e-12, 71.59e-12, 81.63e-12, 77.41e-12, 63.43e-12, 35.37e-12, -2.18e-12, -50.56e-12, -107.3e-12, -174.8e-12, -252.3e-12, -338.6e-12, -430.7e-12, -533.2e-12, -641.8e-12, -759.2e-12]
+      },
+      ss_hot: {
+        iup: [627.4e-9, 1.255e-6, 1.882e-6, 2.509e-6, 3.137e-6, 3.764e-6, 4.391e-6, 5.018e-6, 5.646e-6, 6.273e-6, 6.9e-6, 7.527e-6, 8.155e-6, 8.782e-6, 9.409e-6, 10.04e-6],
+        idn: [-627.5e-9, -1.255e-6, -1.882e-6, -2.509e-6, -3.137e-6, -3.764e-6, -4.391e-6, -5.018e-6, -5.646e-6, -6.273e-6, -6.9e-6, -7.527e-6, -8.155e-6, -8.782e-6, -9.409e-6, -10.04e-6],
+        offset: [141.5e-12, 188.1e-12, 119.4e-12, 161.6e-12, 90.2e-12, 129.1e-12, 54.03e-12, 90.91e-12, 16.42e-12, 52.36e-12, -24.34e-12, 11.54e-12, -63.59e-12, -26.18e-12, -100.5e-12, -60.96e-12]
+      },
+      ff_cold: {
+        iup: [631.6e-9, 1.263e-6, 1.895e-6, 2.527e-6, 3.158e-6, 3.79e-6, 4.421e-6, 5.053e-6, 5.685e-6, 6.316e-6, 6.948e-6, 7.579e-6, 8.211e-6, 8.843e-6, 9.474e-6, 10.11e-6],
+        idn: [-631.7e-9, -1.263e-6, -1.895e-6, -2.527e-6, -3.158e-6, -3.79e-6, -4.421e-6, -5.053e-6, -5.685e-6, -6.316e-6, -6.948e-6, -7.579e-6, -8.211e-6, -8.843e-6, -9.474e-6, -10.11e-6],
+        offset: [76.46e-12, 76.43e-12, 61.19e-12, 63.44e-12, 51.35e-12, 55.87e-12, 45.18e-12, 51.98e-12, 45.37e-12, 54.46e-12, 48.36e-12, 59.73e-12, 56.83e-12, 70.5e-12, 69e-12, 84.99e-12]
+      },
+      ff_hot: {
+        iup: [634.5e-9, 1.262e-6, 1.888e-6, 2.511e-6, 3.141e-6, 3.768e-6, 4.394e-6, 5.021e-6, 5.647e-6, 6.274e-6, 6.91e-6, 7.527e-6, 8.153e-6, 8.78e-6, 9.406e-6, 10.03e-6],
+        idn: [-671.2e-9, -1.304e-6, -1.924e-6, -2.557e-6, -3.177e-6, -3.81e-6, -4.43e-6, -5.063e-6, -5.684e-6, -6.316e-6, -6.937e-6, -7.569e-6, -8.19e-6, -8.822e-6, -9.443e-6, -10.08e-6],
+        offset: [36.72e-9, 42.31e-9, 36.69e-9, 42.28e-9, 36.66e-9, 42.25e-9, 36.64e-9, 42.23e-9, 36.61e-9, 42.2e-9, 36.59e-9, 42.18e-9, 36.56e-9, 42.15e-9, 36.54e-9, 42.13e-9]
+      }
+    };
+
+    const r1Lookup = {
+      fast: {
+        tt: [44.95e6, 64.15e3, 32.27e3, 21.48e3, 16.32e3, 13.01e3, 10.84e3, 9.273e3, 8.337e3, 7.379e3, 6.626e3, 6.006e3, 5.518e3, 5.082e3, 4.713e3, 4.391e3],
+        ss_cold: [43.15e6, 77.96e3, 39.15e3, 26.06e3, 19.75e3, 15.76e3, 13.13e3, 11.24e3, 10.05e3, 8.906e3, 8e3, 7.256e3, 6.664e3, 6.139e3, 5.695e3, 5.307e3],
+        ss_hot: [96.7e6, 76.68e3, 38.54e3, 25.65e3, 19.46e3, 15.52e3, 12.93e3, 11.07e3, 9.922e3, 8.786e3, 7.892e3, 7.156e3, 6.573e3, 6.055e3, 5.616e3, 5.233e3],
+        ff_cold: [129.2e6, 51.91e3, 26.13e3, 17.38e3, 13.23e3, 10.55e3, 8.784e3, 7.513e3, 6.787e3, 6.002e3, 5.388e3, 4.881e3, 4.486e3, 4.13e3, 3.829e3, 3.566e3],
+        ff_hot: [330.4e3, 47.22e3, 25.07e3, 16.96e3, 12.96e3, 10.36e3, 8.641e3, 7.395e3, 6.691e3, 5.918e3, 5.312e3, 4.812e3, 4.424e3, 4.072e3, 3.775e3, 3.515e3]
+      },
+      fine: null,
+      cdr: {
+        tt: [21.48e3, 9.273e3, 6.006e3, 4.391e3, 3.618e3, 2.962e3, 2.524e3, 2.187e3, 2.126e3, 1.882e3, 1.696e3, 1.537e3, 1.431e3, 1.316e3, 1.222e3, 1.137e3],
+        ss_cold: [26.06e3, 11.24e3, 7.256e3, 5.307e3, 4.34e3, 3.559e3, 3.033e3, 2.63e3, 2.517e3, 2.234e3, 2.015e3, 1.829e3, 1.7e3, 1.565e3, 1.455e3, 1.356e3],
+        ss_hot: [25.65e3, 11.07e3, 7.156e3, 5.233e3, 4.294e3, 3.519e3, 2.999e3, 2.6e3, 2.508e3, 2.223e3, 2.005e3, 1.819e3, 1.692e3, 1.558e3, 1.447e3, 1.348e3],
+        ff_cold: [17.38e3, 7.513e3, 4.881e3, 3.566e3, 2.958e3, 2.418e3, 2.061e3, 1.783e3, 1.757e3, 1.552e3, 1.397e3, 1.263e3, 1.178e3, 1.082e3, 1.004e3, 933.6],
+        ff_hot: [16.96e3, 7.395e3, 4.812e3, 3.515e3, 2.925e3, 2.389e3, 2.037e3, 1.762e3, 1.747e3, 1.541e3, 1.386e3, 1.253e3, 1.17e3, 1.074e3, 996.3, 925.7]
+      }
+    };
+    r1Lookup.fine = r1Lookup.fast;
+
+    const el = id => document.getElementById(id);
+    let currentStage = "fast";
+
+    function c(re, im) { return { re, im }; }
+    function add(a, b) { return c(a.re + b.re, a.im + b.im); }
+    function mul(a, b) { return c(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re); }
+    function div(a, b) {
+      const d = b.re * b.re + b.im * b.im;
+      return c((a.re * b.re + a.im * b.im) / d, (a.im * b.re - a.re * b.im) / d);
+    }
+    function abs(a) { return Math.hypot(a.re, a.im); }
+    function phaseDeg(a) { return Math.atan2(a.im, a.re) * 180 / Math.PI; }
+
+    function polyEval(coeff, w) {
+      let acc = c(0, 0);
+      const jw = c(0, w);
+      for (const k of coeff) {
+        acc = add(mul(acc, jw), c(k, 0));
+      }
+      return acc;
+    }
+
+    function tfValue(num, den, w) {
+      return div(polyEval(num, w), polyEval(den, w));
+    }
+
+    function trimPoly(poly) {
+      const out = poly.slice();
+      while (out.length > 1 && Math.abs(out[0]) < 1e-300) out.shift();
+      return out;
+    }
+
+    function polyAddReal(a, b) {
+      const n = Math.max(a.length, b.length);
+      const out = new Array(n).fill(0);
+      for (let i = 0; i < n; i++) {
+        const ai = i >= n - a.length ? a[i - (n - a.length)] : 0;
+        const bi = i >= n - b.length ? b[i - (n - b.length)] : 0;
+        out[i] = ai + bi;
+      }
+      return trimPoly(out);
+    }
+
+    function polyMulReal(a, b) {
+      const out = new Array(a.length + b.length - 1).fill(0);
+      for (let i = 0; i < a.length; i++) {
+        for (let j = 0; j < b.length; j++) {
+          out[i + j] += a[i] * b[j];
+        }
+      }
+      return trimPoly(out);
+    }
+
+    function polyScaleReal(a, k) {
+      return trimPoly(a.map(v => v * k));
+    }
+
+    function complexSub(a, b) { return c(a.re - b.re, a.im - b.im); }
+    function complexScale(a, k) { return c(a.re * k, a.im * k); }
+
+    function polyEvalComplex(coeff, z) {
+      let acc = c(0, 0);
+      for (const k of coeff) {
+        acc = add(mul(acc, z), c(k, 0));
+      }
+      return acc;
+    }
+
+    function rootsOfRealPoly(poly) {
+      let coeff = trimPoly(poly);
+      const leading = Math.max(...coeff.map(v => Math.abs(v)));
+      if (!Number.isFinite(leading) || leading === 0) return [];
+      const eps = leading * 1e-12;
+      const originRoots = [];
+      while (coeff.length > 1 && Math.abs(coeff[coeff.length - 1]) < eps) {
+        coeff = coeff.slice(0, -1);
+        originRoots.push(c(0, 0));
+      }
+      const degree = coeff.length - 1;
+      if (degree <= 0) return originRoots;
+      if (degree === 1) return originRoots.concat([c(-coeff[1] / coeff[0], 0)]);
+
+      coeff = coeff.map(v => v / coeff[0]);
+      const radius = 1 + Math.max(...coeff.slice(1).map(v => Math.abs(v)));
+      let roots = [];
+      for (let i = 0; i < degree; i++) {
+        const theta = 2 * Math.PI * i / degree + 0.19;
+        roots.push(c(radius * Math.cos(theta), radius * Math.sin(theta)));
+      }
+
+      for (let iter = 0; iter < 120; iter++) {
+        let maxStep = 0;
+        roots = roots.map((root, i) => {
+          let denom = c(1, 0);
+          for (let j = 0; j < roots.length; j++) {
+            if (i !== j) denom = mul(denom, complexSub(root, roots[j]));
+          }
+          const delta = div(polyEvalComplex(coeff, root), denom);
+          maxStep = Math.max(maxStep, abs(delta));
+          return complexSub(root, delta);
+        });
+        if (maxStep < 1e-6) break;
+      }
+      return originRoots.concat(roots.map(root => Math.abs(root.im) < Math.max(1, Math.abs(root.re)) * 1e-8 ? c(root.re, 0) : root));
+    }
+
+    function cancelCommonOriginFactors(num, den) {
+      const scale = Math.max(
+        ...num.map(v => Math.abs(v)),
+        ...den.map(v => Math.abs(v)),
+        1
+      );
+      const eps = scale * 1e-12;
+      let n = trimPoly(num);
+      let d = trimPoly(den);
+      let cancelled = 0;
+      while (n.length > 1 && d.length > 1 && Math.abs(n[n.length - 1]) < eps && Math.abs(d[d.length - 1]) < eps) {
+        n = n.slice(0, -1);
+        d = d.slice(0, -1);
+        cancelled += 1;
+      }
+      return { num: n, den: d, cancelled };
+    }
+
+    function readParams() {
+      const base = stages[currentStage];
+      const k1n = Number(el("k1n").value);
+      const k2n = Number(el("k2n").value);
+      const ksum = k1n + k2n;
+      const dataRate = Number(el("dataRate").value) * 1e9;
+      const cornerPreset = el("cornerPreset").value;
+      const vcoPoint = lookupVcoPoint(cornerPreset, dataRate / 4);
+      const icpCode = Number(el("icpCode").value);
+      const icpPoint = lookupIcpPoint(cornerPreset, icpCode);
+      const manualKvco = Number(el("kvco").value);
+      const kvcoMode = el("kvcoMode").value;
+      const kvcoBase = kvcoMode === "manual" ? manualKvco : (vcoPoint ? vcoPoint.kvco : manualKvco);
+      return {
+        stage: currentStage,
+        rList: base.r,
+        icpCode,
+        rCode: Number(el("rCode").value),
+        cornerPreset,
+        temperatureC: Number(el("temperatureC").value),
+        kvcoMode,
+        vcoPoint,
+        icpPoint,
+        kvco: kvcoBase,
+        n: Number(el("divider").value),
+        c1: Number(el("c1").value),
+        c2: Number(el("c2").value),
+        r3: Number(el("r3").value),
+        c3: Number(el("c3").value),
+        k1: ksum > 0 ? k1n / ksum : 1,
+        k2: ksum > 0 ? k2n / ksum : 0,
+        dual: base.dual,
+        cdr: base.cdr,
+        transitionDensity: Number(el("transitionDensity").value),
+        jitter: Number(el("jitter").value),
+        bbpdUpdateUi: Number(el("bbpdUpdateUi").value),
+        bbpdPulseUi: Number(el("bbpdPulseUi").value),
+        bbpdGainScale: Number(el("bbpdGainScale").value),
+        dataRate,
+        pmTarget: Number(el("pmTarget").value),
+        bwTarget: Number(el("bwTarget").value) * 1e6,
+        bwMin: Number(el("bwMin").value) * 1e6,
+        bwMax: Number(el("bwMax").value) * 1e6,
+        fbClk: Number(el("fbClkMHz").value) * 1e6,
+        fastHoldCount: Number(el("fastHoldCount").value),
+        lockThreshold: Number(el("lockThresholdPs").value) * 1e-12,
+        settleFactor: Number(el("settleFactor").value)
+      };
+    }
+
+    function lookupVcoPoint(cornerPreset, targetFvco) {
+      const table = vcoLookup[cornerPreset];
+      if (!table || !Number.isFinite(targetFvco)) return null;
+      const v = table.vctrl;
+      const f = table.fvco;
+      if (v.length < 2 || v.length !== f.length) return null;
+
+      let idx = -1;
+      let extrapolated = false;
+      if (targetFvco <= f[0]) {
+        idx = 0;
+        extrapolated = true;
+      } else if (targetFvco >= f[f.length - 1]) {
+        idx = f.length - 2;
+        extrapolated = true;
+      } else {
+        for (let i = 0; i < f.length - 1; i++) {
+          if (targetFvco >= f[i] && targetFvco <= f[i + 1]) {
+            idx = i;
+            break;
+          }
+        }
+      }
+      if (idx < 0) return null;
+
+      const slope = (f[idx + 1] - f[idx]) / (v[idx + 1] - v[idx]);
+      const vctrl = v[idx] + (targetFvco - f[idx]) / slope;
+      return {
+        targetFvco,
+        vctrl,
+        kvco: slope,
+        fLo: f[idx],
+        fHi: f[idx + 1],
+        vLo: v[idx],
+        vHi: v[idx + 1],
+        extrapolated
+      };
+    }
+
+    function finiteOr(value, fallback) {
+      const n = Number(value);
+      return Number.isFinite(n) ? n : fallback;
+    }
+
+    function bbpdTerms(p) {
+      const jitter = Math.max(finiteOr(p.jitter, 4e-12), 1e-15);
+      const transitionDensity = Math.max(0, finiteOr(p.transitionDensity, 0));
+      const updateUi = Math.max(finiteOr(p.bbpdUpdateUi, 1), 1e-6);
+      const pulseUi = Math.max(0, finiteOr(p.bbpdPulseUi, 0));
+      const scale = Math.max(0, finiteOr(p.bbpdGainScale, 1));
+      const jitterUi = Math.max(jitter * Math.max(finiteOr(p.dataRate, 1e9), 1), 1e-9);
+      const updateDuty = pulseUi / updateUi;
+      const kbbpd = transitionDensity * 2 / (Math.sqrt(2 * Math.PI) * jitterUi);
+      return {
+        jitter,
+        jitterUi,
+        transitionDensity,
+        updateUi,
+        pulseUi,
+        scale,
+        updateDuty,
+        kbbpd,
+        gain: updateDuty * scale * kbbpd
+      };
+    }
+
+    function pdGain(p) {
+      if (!p.cdr) return 1;
+      return bbpdTerms(p).gain;
+    }
+
+    function analysisFmax(p) {
+      return Math.max(1e10, Math.min(1e12, Math.max(finiteOr(p.dataRate, 0), 0) * 20));
+    }
+
+    function lookupIcpPoint(cornerPreset, icpCode) {
+      const table = icpLookup[cornerPreset];
+      const idx = icpCode - 1;
+      if (!table || idx < 0 || idx >= table.iup.length) return null;
+      return {
+        iup: table.iup[idx],
+        idn: table.idn[idx],
+        offset: table.offset[idx]
+      };
+    }
+
+    function staticIcpValue(cornerPreset, icpCode) {
+      const point = lookupIcpPoint(cornerPreset, icpCode);
+      if (point) return (Math.abs(point.iup) + Math.abs(point.idn)) / 2;
+      return icpCode * 0.625e-6;
+    }
+
+    function lookupR1(stage, cornerPreset, rCode, fallbackList) {
+      const stageTable = r1Lookup[stage];
+      const table = stageTable ? stageTable[cornerPreset] : null;
+      const idx = rCode - 1;
+      if (table && idx >= 0 && idx < table.length) return table[idx];
+      return fallbackList[idx];
+    }
+
+    function openLoopTf(p, icpCode, rCode) {
+      const r1 = lookupR1(p.stage, p.cornerPreset, rCode, p.rList);
+      const rawIcp = staticIcpValue(p.cornerPreset, icpCode);
+      const icp = rawIcp / (2 * Math.PI) * pdGain(p);
+      const common = icp * p.kvco;
+
+      if (!p.dual) {
+        return {
+          num: [common * r1 * p.c1, common],
+          den: [p.n * r1 * p.c1 * p.c2, p.n * (p.c1 + p.c2), 0, 0],
+          cancelled: 0
+        };
+      }
+
+      const num1 = [common * p.k1 * r1 * p.c1, common * p.k1];
+      const den1 = [p.n * r1 * p.c1 * p.c2, p.n * (p.c1 + p.c2), 0, 0];
+      const num2 = [common * p.k2 * r1 * p.c1, common * p.k2];
+      const den2 = [
+        p.n * r1 * p.c1 * p.c2 * p.r3 * p.c3,
+        p.n * (r1 * p.c1 * p.c2 + (p.c1 + p.c2) * p.r3 * p.c3),
+        p.n * (p.c1 + p.c2),
+        0,
+        0
+      ];
+      const rawNum = polyAddReal(polyMulReal(num1, den2), polyMulReal(num2, den1));
+      const rawDen = polyMulReal(den1, den2);
+      return cancelCommonOriginFactors(rawNum, rawDen);
+    }
+
+    function openLoop(p, icpCode, rCode, w) {
+      const tf = openLoopTf(p, icpCode, rCode);
+      return tfValue(tf.num, tf.den, w);
+    }
+
+    function closedLoop(p, icpCode, rCode, w) {
+      const h = openLoop(p, icpCode, rCode, w);
+      return div(h, add(c(1, 0), h));
+    }
+
+    function calcClosedLoopBandwidth(p, icpCode, rCode, points = 2200) {
+      const fMin = 1;
+      const fMax = analysisFmax(p);
+      const dcMag = abs(closedLoop(p, icpCode, rCode, 2 * Math.PI * fMin));
+      if (!Number.isFinite(dcMag) || dcMag <= 0) return NaN;
+      const target = dcMag / Math.sqrt(2);
+      let prevF = fMin;
+      let prevMag = dcMag;
+
+      for (let i = 1; i <= points; i++) {
+        const f = fMin * Math.pow(fMax / fMin, i / points);
+        const mag = abs(closedLoop(p, icpCode, rCode, 2 * Math.PI * f));
+        if (prevMag >= target && mag <= target) {
+          let lo = prevF;
+          let hi = f;
+          let mlo = prevMag - target;
+          for (let k = 0; k < 40; k++) {
+            const mid = Math.sqrt(lo * hi);
+            const mmid = abs(closedLoop(p, icpCode, rCode, 2 * Math.PI * mid)) - target;
+            if ((mlo >= 0 && mmid >= 0) || (mlo <= 0 && mmid <= 0)) {
+              lo = mid;
+              mlo = mmid;
+            } else {
+              hi = mid;
+            }
+          }
+          return Math.sqrt(lo * hi);
+        }
+        prevF = f;
+        prevMag = mag;
+      }
+      return NaN;
+    }
+
+    function calcMargin(p, icpCode, rCode, points = 1800, bwPoints = 2200) {
+      const fMin = 1;
+      const fMax = analysisFmax(p);
+      let prevF = fMin;
+      let prevMag = abs(openLoop(p, icpCode, rCode, 2 * Math.PI * prevF));
+
+      for (let i = 1; i <= points; i++) {
+        const t = i / points;
+        const f = fMin * Math.pow(fMax / fMin, t);
+        const mag = abs(openLoop(p, icpCode, rCode, 2 * Math.PI * f));
+        if ((prevMag >= 1 && mag <= 1) || (prevMag <= 1 && mag >= 1)) {
+          let lo = prevF;
+          let hi = f;
+          let mlo = prevMag - 1;
+          for (let k = 0; k < 40; k++) {
+            const mid = Math.sqrt(lo * hi);
+            const mmid = abs(openLoop(p, icpCode, rCode, 2 * Math.PI * mid)) - 1;
+            if ((mlo >= 0 && mmid >= 0) || (mlo <= 0 && mmid <= 0)) {
+              lo = mid;
+              mlo = mmid;
+            } else {
+              hi = mid;
+            }
+          }
+          const fc = Math.sqrt(lo * hi);
+          let ph = phaseDeg(openLoop(p, icpCode, rCode, 2 * Math.PI * fc));
+          while (ph > 0) ph -= 360;
+          while (ph <= -360) ph += 360;
+          return { pm: 180 + ph, ugf: fc, bw: calcClosedLoopBandwidth(p, icpCode, rCode, bwPoints) };
+        }
+        prevF = f;
+        prevMag = mag;
+      }
+      return { pm: NaN, ugf: NaN, bw: calcClosedLoopBandwidth(p, icpCode, rCode, bwPoints) };
+    }
+
+    function sweep(p) {
+      const pm = [];
+      const bw = [];
+      for (let i = 1; i <= 16; i++) {
+        const pmRow = [];
+        const bwRow = [];
+        for (let j = 1; j <= 16; j++) {
+          const m = calcMargin(p, i, j);
+          pmRow.push(m.pm);
+          bwRow.push(m.bw);
+        }
+        pm.push(pmRow);
+        bw.push(bwRow);
+      }
+      return { pm, bw };
+    }
+
+    function minMax(matrix) {
+      let min = Infinity;
+      let max = -Infinity;
+      let count = 0;
+      matrix.flat().forEach(v => {
+        if (Number.isFinite(v)) {
+          min = Math.min(min, v);
+          max = Math.max(max, v);
+          count += 1;
+        }
+      });
+      return { min, max, count };
+    }
+
+    function color(t) {
+      t = Math.max(0, Math.min(1, t));
+      const stops = [
+        [35, 61, 142],
+        [45, 142, 191],
+        [83, 181, 116],
+        [246, 214, 91],
+        [206, 74, 62]
+      ];
+      const x = t * (stops.length - 1);
+      const i = Math.min(stops.length - 2, Math.floor(x));
+      const f = x - i;
+      const a = stops[i];
+      const b = stops[i + 1];
+      return `rgb(${Math.round(a[0] + (b[0] - a[0]) * f)},${Math.round(a[1] + (b[1] - a[1]) * f)},${Math.round(a[2] + (b[2] - a[2]) * f)})`;
+    }
+
+    let lastSweep = null;
+    const heatmapGeom = { pad: 46, top: 10, size: 500 - 46 - 12, n: 16 };
+
+    function drawHeatmap(canvas, matrix, selectedI, selectedJ, threshold, labelFn) {
+      const ctx = canvas.getContext("2d");
+      const n = 16;
+      const pad = heatmapGeom.pad;
+      const size = canvas.width - pad - 12;
+      heatmapGeom.size = size;
+      const cell = size / n;
+      const { min, max } = minMax(matrix);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      if (!Number.isFinite(min) || !Number.isFinite(max)) {
+        ctx.fillStyle = "#394550";
+        ctx.font = "14px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("No valid loop result", pad + size / 2, heatmapGeom.top + size / 2);
+        ctx.textBaseline = "alphabetic";
+        return;
+      }
+
+      for (let y = 0; y < n; y++) {
+        for (let x = 0; x < n; x++) {
+          const v = matrix[x][y];
+          const t = Number.isFinite(v) && max > min ? (v - min) / (max - min) : 0.5;
+          ctx.fillStyle = color(t);
+          ctx.fillRect(pad + x * cell, heatmapGeom.top + y * cell, cell + 0.5, cell + 0.5);
+        }
+      }
+
+      if (Number.isFinite(threshold)) {
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 5;
+        drawThreshold(ctx, matrix, threshold, pad, heatmapGeom.top, cell, n);
+        ctx.strokeStyle = "#111827";
+        ctx.lineWidth = 2;
+        drawThreshold(ctx, matrix, threshold, pad, heatmapGeom.top, cell, n);
+      }
+
+      if (typeof labelFn === "function") {
+        ctx.font = "10px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        for (let y = 0; y < n; y++) {
+          for (let x = 0; x < n; x++) {
+            const value = matrix[x][y];
+            const label = labelFn(value, x + 1, y + 1);
+            if (!label) continue;
+            ctx.fillStyle = label.pass === false ? "rgba(20,24,28,0.88)" : "rgba(255,255,255,0.94)";
+            ctx.fillText(label.text, pad + x * cell + cell / 2, heatmapGeom.top + y * cell + cell / 2);
+          }
+        }
+        ctx.textBaseline = "alphabetic";
+      }
+
+      ctx.strokeStyle = "#101820";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(pad + (selectedI - 1) * cell + 1, heatmapGeom.top + (selectedJ - 1) * cell + 1, cell - 2, cell - 2);
+
+      ctx.fillStyle = "#394550";
+      ctx.font = "12px Arial";
+      ctx.textAlign = "center";
+      for (let x = 0; x < n; x++) {
+        ctx.fillText(String(x + 1), pad + x * cell + cell / 2, heatmapGeom.top + size + 20);
+      }
+      ctx.textAlign = "right";
+      for (let y = 0; y < n; y++) {
+        ctx.fillText(String(y + 1), pad - 8, heatmapGeom.top + y * cell + cell * 0.63);
+      }
+      ctx.textAlign = "center";
+      ctx.fillText("ICP code", pad + size / 2, heatmapGeom.top + size + 40);
+      ctx.save();
+      ctx.translate(14, heatmapGeom.top + size / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText("LPF / R1 code", 0, 0);
+      ctx.restore();
+    }
+
+    function crosses(a, b, threshold) {
+      if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
+      return (a < threshold && b >= threshold) || (a >= threshold && b < threshold);
+    }
+
+    function drawThreshold(ctx, matrix, threshold, left, top, cell, n) {
+      ctx.beginPath();
+      for (let y = 0; y < n; y++) {
+        for (let x = 0; x < n - 1; x++) {
+          if (crosses(matrix[x][y], matrix[x + 1][y], threshold)) {
+            const px = left + (x + 1) * cell;
+            const py0 = top + y * cell;
+            ctx.moveTo(px, py0);
+            ctx.lineTo(px, py0 + cell);
+          }
+        }
+      }
+      for (let y = 0; y < n - 1; y++) {
+        for (let x = 0; x < n; x++) {
+          if (crosses(matrix[x][y], matrix[x][y + 1], threshold)) {
+            const px0 = left + x * cell;
+            const py = top + (y + 1) * cell;
+            ctx.moveTo(px0, py);
+            ctx.lineTo(px0 + cell, py);
+          }
+        }
+      }
+      ctx.stroke();
+    }
+
+    function heatmapPick(canvas, event) {
+      const rect = canvas.getBoundingClientRect();
+      const sx = canvas.width / rect.width;
+      const sy = canvas.height / rect.height;
+      const x = (event.clientX - rect.left) * sx;
+      const y = (event.clientY - rect.top) * sy;
+      const cell = heatmapGeom.size / heatmapGeom.n;
+      const col = Math.floor((x - heatmapGeom.pad) / cell);
+      const row = Math.floor((y - heatmapGeom.top) / cell);
+      if (row < 0 || row >= heatmapGeom.n || col < 0 || col >= heatmapGeom.n) return;
+      el("icpCode").value = String(col + 1);
+      el("rCode").value = String(row + 1);
+      update();
+    }
+
+    function fmtHz(v) {
+      if (!Number.isFinite(v)) return "--";
+      if (v >= 1e9) return (v / 1e9).toFixed(3) + " GHz";
+      if (v >= 1e6) return (v / 1e6).toFixed(3) + " MHz";
+      if (v >= 1e3) return (v / 1e3).toFixed(3) + " kHz";
+      return v.toFixed(3) + " Hz";
+    }
+
+    function fmtTime(v) {
+      if (!Number.isFinite(v)) return "--";
+      if (v >= 1e-3) return (v * 1e3).toFixed(3) + " ms";
+      if (v >= 1e-6) return (v * 1e6).toFixed(3) + " us";
+      if (v >= 1e-9) return (v * 1e9).toFixed(3) + " ns";
+      return (v * 1e12).toFixed(3) + " ps";
+    }
+
+    function fmtSignedTime(v) {
+      if (!Number.isFinite(v)) return "--";
+      const sign = v < 0 ? "-" : "+";
+      return sign + fmtTime(Math.abs(v));
+    }
+
+    function fmt(v, digits = 2) {
+      return Number.isFinite(v) ? v.toFixed(digits) : "--";
+    }
+
+    function fmtDb(v) {
+      return Number.isFinite(v) ? v.toFixed(1) + " dB" : "--";
+    }
+
+    function pmClass(pm) {
+      if (!Number.isFinite(pm) || pm < 35) return "bad";
+      if (pm < 50) return "warn";
+      return "ok";
+    }
+
+    function targetPass(p, m) {
+      return Number.isFinite(m.pm) &&
+        Number.isFinite(m.bw) &&
+        m.pm >= p.pmTarget &&
+        m.bw >= p.bwMin &&
+        m.bw <= p.bwMax;
+    }
+
+    function fastLockEstimate(p, m) {
+      const holdTime = p.fastHoldCount / p.fbClk;
+      const settleTime = Number.isFinite(m.bw) && m.bw > 0 ? p.settleFactor / (2 * Math.PI * m.bw) : NaN;
+      const phaseWindowUi = p.lockThreshold * p.fbClk;
+      const pass = Number.isFinite(holdTime) &&
+        Number.isFinite(settleTime) &&
+        m.pm >= p.pmTarget &&
+        settleTime <= holdTime;
+      return { holdTime, settleTime, phaseWindowUi, pass };
+    }
+
+    function settlingAssessment(stage, settleTime) {
+      if (!Number.isFinite(settleTime)) {
+        return { label: "--", cls: "warn", hint: "Bandwidth too low or invalid" };
+      }
+      if (stage === "fast") {
+        if (settleTime < 1e-6) return { label: "Fast", cls: "ok", hint: "Frequency pull-in and fast_lock counting are comfortable" };
+        if (settleTime < 5e-6) return { label: "Moderate", cls: "warn", hint: "May still pass, but hold-count margin is tighter" };
+        return { label: "Slow", cls: "bad", hint: "Fast-lock flag can be delayed by slow convergence" };
+      }
+      if (stage === "fine") {
+        if (settleTime < 0.8e-6) return { label: "Fast", cls: "ok", hint: "Good for fine_lock entry after frequency alignment" };
+        if (settleTime < 3e-6) return { label: "Moderate", cls: "warn", hint: "Watch residual error near the final target" };
+        return { label: "Slow", cls: "bad", hint: "Fine_lock count margin is limited by slow settling" };
+      }
+      if (settleTime < 0.3e-6) return { label: "Fast", cls: "ok", hint: "Tracks phase updates quickly in BBPD mode" };
+      if (settleTime < 1e-6) return { label: "Moderate", cls: "warn", hint: "Tracking is usable, but jitter filtering tradeoff is tighter" };
+      return { label: "Slow", cls: "bad", hint: "CDR tracking can feel sluggish for phase correction" };
+    }
+
+    function transientShape(pm, stage) {
+      if (!Number.isFinite(pm)) {
+        return { label: "--", cls: "warn", hint: "No valid phase margin" };
+      }
+      if (pm < 35) {
+        return {
+          label: "Ringing",
+          cls: "bad",
+          hint: stage === "cdr" ? "High BBPD limit-cycle and jitter peaking risk" : "Large overshoot and repeated threshold crossing risk"
+        };
+      }
+      if (pm < 50) {
+        return {
+          label: "Peaking",
+          cls: "warn",
+          hint: stage === "fast" ? "Can shorten apparent lock time but may shake lock_flag" : "Usable, but check overshoot near handoff"
+        };
+      }
+      if (pm < 70) {
+        return {
+          label: "Balanced",
+          cls: "ok",
+          hint: stage === "cdr" ? "Usually a good tradeoff between tracking and damping" : "Good damping with limited overshoot"
+        };
+      }
+      return {
+        label: "Heavy Damping",
+        cls: "warn",
+        hint: "Very smooth transient, but confirm bandwidth is not overly conservative"
+      };
+    }
+
+    function findRecommendations(p, sweepData) {
+      let balanced = null;
+      let maxPm = null;
+      let closestBw = null;
+      for (let icp = 1; icp <= 16; icp++) {
+        for (let r = 1; r <= 16; r++) {
+          const m = { pm: sweepData.pm[icp - 1][r - 1], bw: sweepData.bw[icp - 1][r - 1] };
+          if (!Number.isFinite(m.pm) || !Number.isFinite(m.bw)) continue;
+          const bwErr = Math.abs(m.bw - p.bwTarget);
+          const item = { icp, r, pm: m.pm, bw: m.bw, bwErr };
+          if (targetPass(p, m)) {
+            const score = bwErr / Math.max(p.bwTarget, 1) + Math.max(0, p.pmTarget - m.pm) / 100;
+            item.score = score;
+            if (!balanced || item.score < balanced.score) balanced = item;
+            if (!maxPm || item.pm > maxPm.pm) maxPm = item;
+          }
+          if (!closestBw || bwErr < closestBw.bwErr) closestBw = item;
+        }
+      }
+      return { balanced, maxPm, closestBw };
+    }
+
+    function buildParamsFor(stage, cornerPreset, dataRateGbps, icpCode, rCode) {
+      const base = stages[stage];
+      const ksum = base.k1n + base.k2n;
+      const dataRate = dataRateGbps * 1e9;
+      const vcoPoint = lookupVcoPoint(cornerPreset, dataRate / 4);
+      const kvcoMode = el("kvcoMode").value;
+      const manualKvco = Number(el("kvco").value);
+      return {
+        stage,
+        rList: base.r,
+        icpCode,
+        rCode,
+        cornerPreset,
+        temperatureC: cornerPresets[cornerPreset].temperatureC,
+        kvcoMode,
+        vcoPoint,
+        icpPoint: lookupIcpPoint(cornerPreset, icpCode),
+        kvco: kvcoMode === "manual" ? manualKvco : (vcoPoint ? vcoPoint.kvco : base.kvco * base.kvcoMult),
+        n: base.n,
+        c1: Number(el("c1").value),
+        c2: Number(el("c2").value),
+        r3: Number(el("r3").value),
+        c3: Number(el("c3").value),
+        k1: ksum > 0 ? base.k1n / ksum : 1,
+        k2: ksum > 0 ? base.k2n / ksum : 0,
+        dual: base.dual,
+        cdr: base.cdr,
+        transitionDensity: Number(el("transitionDensity").value),
+        jitter: Number(el("jitter").value),
+        bbpdUpdateUi: Number(el("bbpdUpdateUi").value),
+        bbpdPulseUi: Number(el("bbpdPulseUi").value),
+        bbpdGainScale: Number(el("bbpdGainScale").value),
+        dataRate,
+        pmTarget: Number(el("pmTarget").value),
+        bwTarget: Number(el("bwTarget").value) * 1e6,
+        bwMin: Number(el("bwMin").value) * 1e6,
+        bwMax: Number(el("bwMax").value) * 1e6,
+        fbClk: Number(el("fbClkMHz").value) * 1e6,
+        fastHoldCount: Number(el("fastHoldCount").value),
+        lockThreshold: Number(el("lockThresholdPs").value) * 1e-12,
+        settleFactor: Number(el("settleFactor").value)
+      };
+    }
+
+    function robustDataRates() {
+      return [1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5];
+    }
+
+    function evaluateRobustCandidate(stage, icpCode, rCode) {
+      const corners = Object.keys(cornerPresets);
+      const rates = robustDataRates();
+      let worstPm = Infinity;
+      let minBw = Infinity;
+      let maxBw = -Infinity;
+      let worstSettleMargin = Infinity;
+      let passCount = 0;
+      let total = 0;
+      let bwErrNormSum = 0;
+
+      for (const corner of corners) {
+        for (const rate of rates) {
+          const p = buildParamsFor(stage, corner, rate, icpCode, rCode);
+          const m = calcMargin(p, icpCode, rCode, 420, 520);
+          total += 1;
+          if (!Number.isFinite(m.pm) || !Number.isFinite(m.bw)) continue;
+          const fastEst = fastLockEstimate(p, m);
+          const pass = targetPass(p, m) && fastEst.pass;
+          if (pass) passCount += 1;
+          worstPm = Math.min(worstPm, m.pm);
+          minBw = Math.min(minBw, m.bw);
+          maxBw = Math.max(maxBw, m.bw);
+          worstSettleMargin = Math.min(worstSettleMargin, fastEst.holdTime - fastEst.settleTime);
+          bwErrNormSum += Math.abs(m.bw - p.bwTarget) / Math.max(p.bwTarget, 1);
+        }
+      }
+
+      const allPass = passCount === total;
+      const avgBwErr = bwErrNormSum / Math.max(passCount, 1);
+      const score =
+        (allPass ? 0 : 1e6 + (total - passCount) * 1e4) +
+        Math.max(0, 80 - worstPm) * 100 +
+        avgBwErr * 10 -
+        Math.min(Math.max(worstSettleMargin, -1e-3), 1e-3) * 1e6;
+
+      return { stage, icp: icpCode, r: rCode, allPass, passCount, total, worstPm, minBw, maxBw, worstSettleMargin, avgBwErr, score };
+    }
+
+    function findRobustPick(stage) {
+      let best = null;
+      for (let icp = 1; icp <= 16; icp++) {
+        for (let r = 1; r <= 16; r++) {
+          const item = evaluateRobustCandidate(stage, icp, r);
+          if (!best || item.score < best.score) best = item;
+        }
+      }
+      return best;
+    }
+
+    function setRobustCard(id, item) {
+      const card = el(id);
+      card.dataset.stage = item.stage;
+      card.dataset.icp = String(item.icp);
+      card.dataset.r = String(item.r);
+      card.querySelector(".codes").textContent = `ICP ${item.icp}, LPF ${item.r}`;
+      card.querySelector(".detail").textContent =
+        `${item.allPass ? "PASS" : "BEST EFFORT"} ${item.passCount}/${item.total}; worst PM ${fmt(item.worstPm, 1)} deg; BW ${fmtHz(item.minBw)}-${fmtHz(item.maxBw)}; settle margin ${fmtSignedTime(item.worstSettleMargin)}`;
+    }
+
+    function runRobustSearch() {
+      const btn = el("robustSearch");
+      btn.disabled = true;
+      btn.textContent = "Searching...";
+      setTimeout(() => {
+        const picks = {
+          robustFast: findRobustPick("fast"),
+          robustFine: findRobustPick("fine"),
+          robustCdr: findRobustPick("cdr")
+        };
+        Object.entries(picks).forEach(([id, item]) => setRobustCard(id, item));
+        btn.disabled = false;
+        btn.textContent = "Find Picks";
+      }, 20);
+    }
+
+    function applyRobustPick(card) {
+      if (!card.dataset.stage || !card.dataset.icp || !card.dataset.r) return;
+      loadStage(card.dataset.stage);
+      el("icpCode").value = card.dataset.icp;
+      el("rCode").value = card.dataset.r;
+      update();
+    }
+
+    function setRecommendation(id, item) {
+      const card = el(id);
+      const body = card.querySelector(".body");
+      const small = card.querySelector(".small");
+      if (!item) {
+        body.textContent = "No code";
+        small.textContent = "No point meets PM/BW targets";
+        card.dataset.icp = "";
+        card.dataset.r = "";
+        return;
+      }
+      body.textContent = `ICP ${item.icp}, LPF ${item.r}`;
+      small.textContent = `PM ${fmt(item.pm, 1)} deg, BW ${fmtHz(item.bw)}`;
+      card.dataset.icp = String(item.icp);
+      card.dataset.r = String(item.r);
+    }
+
+    function pickRecommendation(card) {
+      if (!card.dataset.icp || !card.dataset.r) return;
+      el("icpCode").value = card.dataset.icp;
+      el("rCode").value = card.dataset.r;
+      update();
+    }
+
+    function bodeData(p, icpCode, rCode) {
+      const data = [];
+      const points = 420;
+      const fMin = 1;
+      const fMax = 1e10;
+      for (let i = 0; i < points; i++) {
+        const f = fMin * Math.pow(fMax / fMin, i / (points - 1));
+        const h = openLoop(p, icpCode, rCode, 2 * Math.PI * f);
+        let ph = phaseDeg(h);
+        while (ph > 0) ph -= 360;
+        while (ph <= -360) ph += 360;
+        data.push({ f, magDb: 20 * Math.log10(abs(h)), phase: ph });
+      }
+      return data;
+    }
+
+    function formatPoleZeroExpr(item) {
+      return `${item.label}: ${item.expr}, f=${fmtHz(item.freq)}`;
+    }
+
+    function poleZeroInfo(p, icpCode, rCode) {
+      const tf = openLoopTf(p, icpCode, rCode);
+      const zeros = rootsOfRealPoly(tf.num);
+      const poles = rootsOfRealPoly(tf.den);
+      const items = [];
+      const symbolic = symbolicOpenLoopExpression(p);
+      items.tfExpr = {
+        num: polyToExpression(tf.num, "Num_numeric(s)"),
+        den: polyToExpression(tf.den, "Den_numeric(s)"),
+        h: "H(s)=Num(s)/Den(s)",
+        symbolicNum: symbolic.num,
+        symbolicDen: symbolic.den,
+        symbolicNote: symbolic.note
+      };
+      const exprs = symbolicPoleZeroExpressions(p);
+      zeros.forEach((root, idx) => {
+        const expr = exprs.zeros[idx] || "root of Num(s)=0";
+        items.push(rootToMarker(root, "zero", `z${idx + 1}`, expr));
+      });
+      poles.forEach((root, idx) => {
+        const expr = exprs.poles[idx] || "root of Den(s)=0";
+        items.push(rootToMarker(root, "pole", root.re === 0 && root.im === 0 ? `p0${idx + 1}` : `p${idx + 1}`, expr));
+      });
+      if (tf.cancelled > 0) {
+        items.push({
+          kind: "cancel",
+          label: "cancel",
+          freq: NaN,
+          expr: `cancelled s^${tf.cancelled}`,
+          detail: `${tf.cancelled} common origin factor${tf.cancelled > 1 ? "s" : ""} removed after H1+H2 common-denominator merge`
+        });
+      }
+      return items;
+    }
+
+    function rootToMarker(root, kind, label, expr) {
+      const freq = Math.hypot(root.re, root.im) / (2 * Math.PI);
+      const damping = Math.hypot(root.re, root.im) > 0 ? -root.re / Math.hypot(root.re, root.im) : NaN;
+      const side = root.re > 0 ? "RHP" : root.re < 0 ? "LHP" : "origin/jw";
+      const detail = Math.abs(root.im) > 0
+        ? `${side}, s=${root.re.toExponential(3)} ${root.im >= 0 ? "+" : "-"} j${Math.abs(root.im).toExponential(3)}, zeta=${fmt(damping, 3)}`
+        : `${side}, s=${root.re.toExponential(3)}`;
+      return { kind, label, freq, expr, detail, root };
+    }
+
+    function polyToExpression(poly, name) {
+      const order = poly.length - 1;
+      const terms = [];
+      poly.forEach((coef, idx) => {
+        if (Math.abs(coef) < 1e-300) return;
+        const power = order - idx;
+        let term = coef.toExponential(3);
+        if (power === 1) term += "*s";
+        else if (power > 1) term += `*s^${power}`;
+        terms.push(term);
+      });
+      return `${name}=${terms.length ? terms.join(" + ") : "0"}`;
+    }
+
+    function symbolicOpenLoopExpression(p) {
+      const gain = p.cdr ? "ICP_eff*KVCO" : "ICP*Kpd*KVCO";
+      if (!p.dual) {
+        return {
+          num: `Num(s)=(${gain})*(R1*C1*s+1)`,
+          den: "Den(s)=N*s^2*(R1*C1*C2*s + C1 + C2)",
+          note: "Fast global expression"
+        };
+      }
+      return {
+        num: `Num(s)=(${gain})*(R1*C1*s+1)*[K1*(A*s^2+B*s+C) + K2*(D*s+E)]`,
+        den: "Den(s)=N*s^2*(D*s+E)*(A*s^2+B*s+C)",
+        note: "A=R1*C1*C2*R3*C3, B=R1*C1*C2+(C1+C2)*R3*C3, C=C1+C2, D=R1*C1*C2, E=C1+C2"
+      };
+    }
+
+    function symbolicPoleZeroExpressions(p) {
+      if (!p.dual) {
+        return {
+          zeros: ["s=-1/(R1*C1)"],
+          poles: [
+            "s=0",
+            "s=0",
+            "s=-(C1+C2)/(R1*C1*C2)"
+          ]
+        };
+      }
+      return {
+        zeros: [
+          "s=-1/(R1*C1)",
+          "s=(-(K1*B+K2*D)+sqrt((K1*B+K2*D)^2-4*K1*A*E))/(2*K1*A)",
+          "s=(-(K1*B+K2*D)-sqrt((K1*B+K2*D)^2-4*K1*A*E))/(2*K1*A)"
+        ],
+        poles: [
+          "s=0",
+          "s=0",
+          "s=-E/D=-(C1+C2)/(R1*C1*C2)",
+          "s=(-B+sqrt(B^2-4*A*E))/(2*A)",
+          "s=(-B-sqrt(B^2-4*A*E))/(2*A)"
+        ]
+      };
+    }
+
+    function drawBode(canvas, data, margin, markers) {
+      const ctx = canvas.getContext("2d");
+      const w = canvas.width;
+      const h = canvas.height;
+      const left = 58;
+      const right = 360;
+      const top = 20;
+      const gap = 34;
+      const plotH = (h - top * 2 - gap) / 2;
+      const plotW = w - left - right;
+      const fMin = 1;
+      const fMax = 1e10;
+      const magRange = rangeWithPad(data.map(d => d.magDb), -20, 80);
+      const phaseRange = rangeWithPad(data.map(d => d.phase), -220, -80);
+
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, w, h);
+
+      drawBodePanel(ctx, data, left, top, plotW, plotH, fMin, fMax, magRange.min, magRange.max, "Magnitude", "dB", d => d.magDb, 0, margin.ugf, markers);
+      drawBodePanel(ctx, data, left, top + plotH + gap, plotW, plotH, fMin, fMax, phaseRange.min, phaseRange.max, "Phase", "deg", d => d.phase, -180, margin.ugf, markers);
+      drawPoleZeroLegend(ctx, markers, left + plotW + 18, top + 12, right - 28);
+    }
+
+    function rangeWithPad(values, fallbackMin, fallbackMax) {
+      let min = Infinity;
+      let max = -Infinity;
+      values.forEach(v => {
+        if (Number.isFinite(v)) {
+          min = Math.min(min, v);
+          max = Math.max(max, v);
+        }
+      });
+      if (!Number.isFinite(min) || !Number.isFinite(max)) return { min: fallbackMin, max: fallbackMax };
+      min = Math.min(min, fallbackMin);
+      max = Math.max(max, fallbackMax);
+      const pad = Math.max((max - min) * 0.08, 1);
+      return { min: min - pad, max: max + pad };
+    }
+
+    function drawBodePanel(ctx, data, left, top, width, height, fMin, fMax, yMin, yMax, title, unit, getter, refY, crossover, markers) {
+      const xOf = f => left + Math.log10(f / fMin) / Math.log10(fMax / fMin) * width;
+      const yOf = y => top + (yMax - y) / (yMax - yMin) * height;
+
+      ctx.strokeStyle = "#d9e0e8";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(left, top, width, height);
+
+      for (let decade = 0; decade <= 10; decade++) {
+        for (let minor = 1; minor < 10; minor++) {
+          const f = minor * Math.pow(10, decade);
+          if (f < fMin || f > fMax) continue;
+          const x = xOf(f);
+          ctx.strokeStyle = minor === 1 ? "#d9e0e8" : "#edf1f5";
+          ctx.lineWidth = minor === 1 ? 1 : 0.7;
+          ctx.beginPath();
+          ctx.moveTo(x, top);
+          ctx.lineTo(x, top + height);
+          ctx.stroke();
+        }
+      }
+
+      const yTicks = niceTicks(yMin, yMax, 6);
+      yTicks.forEach(tick => {
+        if (tick <= yMin || tick >= yMax) return;
+        const y = yOf(tick);
+        ctx.strokeStyle = "#edf1f5";
+        ctx.lineWidth = 0.7;
+        ctx.beginPath();
+        ctx.moveTo(left, y);
+        ctx.lineTo(left + width, y);
+        ctx.stroke();
+      });
+
+      if (refY >= yMin && refY <= yMax) {
+        const y = yOf(refY);
+        ctx.strokeStyle = "#9aa6b2";
+        ctx.setLineDash([6, 5]);
+        ctx.beginPath();
+        ctx.moveTo(left, y);
+        ctx.lineTo(left + width, y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      if (Number.isFinite(crossover)) {
+        const x = xOf(crossover);
+        ctx.strokeStyle = "#b42318";
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(x, top);
+        ctx.lineTo(x, top + height);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      if (Array.isArray(markers)) {
+        markers.forEach((item, idx) => {
+          if (item.kind === "cancel") return;
+          if (!Number.isFinite(item.freq) || item.freq < fMin || item.freq > fMax) return;
+          const x = xOf(item.freq);
+          ctx.strokeStyle = item.kind === "zero" ? "#087443" : "#7c3aed";
+          ctx.lineWidth = 1.4;
+          ctx.setLineDash(item.kind === "zero" ? [3, 3] : [8, 4]);
+          ctx.beginPath();
+          ctx.moveTo(x, top);
+          ctx.lineTo(x, top + height);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = item.kind === "zero" ? "#087443" : "#7c3aed";
+          ctx.font = "11px Arial";
+          ctx.textAlign = "center";
+          ctx.fillText(item.label, x, top + 14 + (idx % 2) * 12);
+        });
+      }
+
+      ctx.strokeStyle = "#1565c0";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      data.forEach((d, idx) => {
+        const x = xOf(d.f);
+        const y = yOf(getter(d));
+        if (idx === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      ctx.fillStyle = "#394550";
+      ctx.font = "12px Arial";
+      ctx.textAlign = "left";
+      ctx.fillText(`${title} (${unit})`, left, top - 6);
+      ctx.textAlign = "right";
+      yTicks.forEach(tick => {
+        if (tick < yMin || tick > yMax) return;
+        ctx.fillText(fmt(tick, 0), left - 8, yOf(tick) + 4);
+      });
+      ctx.textAlign = "center";
+      [1, 10, 100, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10].forEach(f => {
+        if (f >= fMin && f <= fMax) ctx.fillText(shortHz(f), xOf(f), top + height + 18);
+      });
+    }
+
+    function niceTicks(min, max, count) {
+      const span = Math.max(max - min, 1e-12);
+      const raw = span / Math.max(count - 1, 1);
+      const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+      const norm = raw / mag;
+      const step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag;
+      const start = Math.ceil(min / step) * step;
+      const ticks = [];
+      for (let v = start; v <= max + step * 0.5; v += step) ticks.push(v);
+      return ticks;
+    }
+
+    function shortHz(f) {
+      if (f >= 1e9) return `${fmt(f / 1e9, f === 1e10 ? 0 : 0)}G`;
+      if (f >= 1e6) return `${fmt(f / 1e6, 0)}M`;
+      if (f >= 1e3) return `${fmt(f / 1e3, 0)}k`;
+      return `${fmt(f, 0)}`;
+    }
+
+    function drawPoleZeroLegend(ctx, markers, x, y, width) {
+      ctx.fillStyle = "#394550";
+      ctx.font = "12px Arial";
+      ctx.textAlign = "left";
+      ctx.fillText("Global Pole / Zero", x, y);
+      let yy = y + 18;
+      if (markers.tfExpr) {
+        ctx.fillStyle = "#16202a";
+        ctx.font = "11px Arial";
+        wrapText(ctx, markers.tfExpr.h, x, yy, width, 13);
+        yy += 16;
+        ctx.fillStyle = "#16202a";
+        wrapText(ctx, markers.tfExpr.symbolicNum, x, yy, width, 13);
+        yy += wrappedHeight(ctx, markers.tfExpr.symbolicNum, width, 13) + 4;
+        wrapText(ctx, markers.tfExpr.symbolicDen, x, yy, width, 13);
+        yy += wrappedHeight(ctx, markers.tfExpr.symbolicDen, width, 13) + 4;
+        ctx.fillStyle = "#667382";
+        wrapText(ctx, markers.tfExpr.symbolicNote, x, yy, width, 13);
+        yy += wrappedHeight(ctx, markers.tfExpr.symbolicNote, width, 13) + 8;
+        wrapText(ctx, "z/p lines show symbolic RC expression first; s= is the numerical root for current codes.", x, yy, width, 13);
+        yy += wrappedHeight(ctx, "z/p lines show symbolic RC expression first; s= is the numerical root for current codes.", width, 13) + 8;
+      }
+      const uniqueMarkers = [];
+      const seen = new Set();
+      markers.forEach(item => {
+        const key = `${item.label}:${item.freq}:${item.expr}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniqueMarkers.push(item);
+        }
+      });
+      uniqueMarkers.forEach(item => {
+        ctx.fillStyle = item.kind === "zero" ? "#087443" : item.kind === "pole" ? "#7c3aed" : "#667382";
+        ctx.fillRect(x, yy - 8, 10, 2);
+        ctx.fillStyle = "#16202a";
+        ctx.font = "11px Arial";
+        const line1 = formatPoleZeroExpr(item);
+        wrapText(ctx, line1, x + 16, yy, width - 18, 12);
+        yy += wrappedHeight(ctx, line1, width - 18, 12) + 1;
+        ctx.fillStyle = "#667382";
+        wrapText(ctx, item.detail, x + 16, yy, width - 18, 12);
+        yy += wrappedHeight(ctx, item.detail, width - 18, 12) + 5;
+      });
+      ctx.fillStyle = "#667382";
+      ctx.font = "11px Arial";
+      ctx.fillText("Origin poles/zeros are listed but not drawn on the log-frequency axis.", x, yy + 4);
+    }
+
+    function wrappedHeight(ctx, text, maxWidth, lineHeight) {
+      const words = text.split(" ");
+      let line = "";
+      let lines = 1;
+      for (let i = 0; i < words.length; i++) {
+        const test = line ? `${line} ${words[i]}` : words[i];
+        if (ctx.measureText(test).width > maxWidth && line) {
+          line = words[i];
+          lines += 1;
+        } else {
+          line = test;
+        }
+      }
+      return lines * lineHeight;
+    }
+
+    function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+      const words = text.split(" ");
+      let line = "";
+      let yy = y;
+      for (let i = 0; i < words.length; i++) {
+        const test = line ? `${line} ${words[i]}` : words[i];
+        if (ctx.measureText(test).width > maxWidth && line) {
+          ctx.fillText(line, x, yy);
+          line = words[i];
+          yy += lineHeight;
+        } else {
+          line = test;
+        }
+      }
+      if (line) ctx.fillText(line, x, yy);
+    }
+
+    function fillSelects() {
+      const icpSel = el("icpCode");
+      const rSel = el("rCode");
+      icpSel.innerHTML = "";
+      rSel.innerHTML = "";
+      const st = stages[currentStage];
+      for (let i = 1; i <= 16; i++) {
+        const opt = document.createElement("option");
+        opt.value = i;
+        const point = lookupIcpPoint(el("cornerPreset").value, i);
+        const label = point ? `${fmt(staticIcpValue(el("cornerPreset").value, i) * 1e6, 3)} uA avg` : `${(i * 0.625).toFixed(3)} uA ideal`;
+        opt.textContent = `${i} (${label})`;
+        icpSel.appendChild(opt);
+      }
+      st.r.forEach((_r, idx) => {
+        const opt = document.createElement("option");
+        opt.value = idx + 1;
+        const r = lookupR1(currentStage, el("cornerPreset").value, idx + 1, st.r);
+        opt.textContent = `${idx + 1} (${r >= 1e6 ? (r / 1e6).toFixed(3) + "M" : (r / 1e3).toFixed(1) + "k"} Ohm)`;
+        rSel.appendChild(opt);
+      });
+    }
+
+    function applyCornerPreset(name) {
+      const preset = cornerPresets[name];
+      if (!preset) return;
+      el("temperatureC").value = preset.temperatureC;
+    }
+
+    function cornerLabel(p) {
+      const preset = cornerPresets[p.cornerPreset];
+      const name = preset ? preset.label : p.cornerPreset;
+      return `${name}, ${fmt(p.temperatureC, 0)}C`;
+    }
+
+    function vcoLookupLabel(p) {
+      if (p.kvcoMode === "manual") return `manual KVCO ${fmtHz(p.kvco)}/V`;
+      if (!p.vcoPoint) return `KVCO lookup missing`;
+      const v = p.vcoPoint;
+      const extra = v.extrapolated ? ", extrapolated" : "";
+      return `data ${fmtHz(p.dataRate)}, fvco ${fmtHz(v.targetFvco)}, Vctrl ${fmt(v.vctrl, 3)}V, KVCO ${fmtHz(v.kvco)}/V${extra}`;
+    }
+
+    function updateKvcoField(p) {
+      const kvcoInput = el("kvco");
+      const kvcoMode = el("kvcoMode").value;
+      if (kvcoMode === "manual") {
+        kvcoInput.disabled = false;
+        kvcoInput.title = "Manual KVCO is used for all calculations.";
+      } else if (p.vcoPoint) {
+        kvcoInput.value = Number.isFinite(p.kvco) ? p.kvco.toPrecision(6) : "";
+        kvcoInput.disabled = true;
+        kvcoInput.title = "Auto-filled from corner fvco_avg vs vctrl data using data_rate/4.";
+      } else {
+        kvcoInput.disabled = false;
+        kvcoInput.title = "KVCO lookup data is missing for this corner.";
+      }
+    }
+
+    function icpLookupLabel(p) {
+      if (!p.icpPoint) return `ideal ICP ${fmt(p.icpCode * 0.625, 3)}uA`;
+      const staticIcp = staticIcpValue(p.cornerPreset, p.icpCode);
+      return `ICP ${fmt(staticIcp * 1e6, 3)}uA avg, IUP ${fmt(p.icpPoint.iup * 1e6, 3)}uA, IDN ${fmt(p.icpPoint.idn * 1e6, 3)}uA, offset ${fmt(p.icpPoint.offset * 1e12, 2)}pA`;
+    }
+
+    function r1LookupLabel(p) {
+      const r1 = lookupR1(p.stage, p.cornerPreset, p.rCode, p.rList);
+      return `R1 ${r1 >= 1e6 ? fmt(r1 / 1e6, 3) + "M" : fmt(r1 / 1e3, 3) + "k"} Ohm`;
+    }
+
+    function cdrModelLabel(p) {
+      if (!p.cdr) return "";
+      const terms = bbpdTerms(p);
+      const staticIcp = staticIcpValue(p.cornerPreset, p.icpCode);
+      const normalizedGain = staticIcp / (2 * Math.PI) * terms.gain;
+      return `BBPD TD ${fmt(terms.transitionDensity, 3)}, jitter ${fmtTime(terms.jitter)} (${fmt(terms.jitterUi, 4)} UI), pulse/update ${fmt(terms.pulseUi, 2)}/${fmt(terms.updateUi, 2)}UI, duty ${fmt(terms.updateDuty, 3)}, scale ${fmt(terms.scale, 3)}, Kbbpd ${fmt(terms.kbbpd, 3)} 1/UI, ICP_eff gain ${fmt(normalizedGain, 6)} A/rad`;
+    }
+
+    function loadStage(stage) {
+      currentStage = stage;
+      document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("active", b.dataset.stage === stage));
+      updateArchitecture(stage);
+      const st = stages[stage];
+      fillSelects();
+      el("icpCode").value = "8";
+      el("rCode").value = "8";
+      if (el("kvcoMode").value !== "manual" || !el("kvco").value) el("kvco").value = st.kvco;
+      el("divider").value = st.n;
+      el("c1").value = st.c1;
+      el("c2").value = st.c2;
+      el("r3").value = st.r3;
+      el("c3").value = st.c3;
+      el("k1n").value = st.k1n;
+      el("k2n").value = st.k2n;
+      el("transitionDensity").value = st.transitionDensity || 0.33;
+      el("jitter").value = st.jitter || 4e-12;
+      el("bbpdUpdateUi").value = st.bbpdUpdateUi || 2;
+      el("bbpdPulseUi").value = st.bbpdPulseUi || 2;
+      el("bbpdGainScale").value = st.bbpdGainScale || 1;
+      if (!el("dataRate").value) el("dataRate").value = st.dataRateGbps || 4;
+      el("fineControls").style.display = st.dual ? "block" : "none";
+      el("cdrControls").style.display = st.cdr ? "block" : "none";
+      update();
+    }
+
+    function updateArchitecture(stage) {
+      const map = { fast: "archFast", fine: "archFine", cdr: "archCdr" };
+      Object.values(map).forEach(id => {
+        const node = el(id);
+        if (node) node.classList.remove("active");
+      });
+      const active = el(map[stage]);
+      if (active) active.classList.add("active");
+    }
+
+    function update() {
+      const p = readParams();
+      updateKvcoField(p);
+      const m = calcMargin(p, p.icpCode, p.rCode);
+      const fastEst = fastLockEstimate(p, m);
+      const settleInfo = settlingAssessment(p.stage, fastEst.settleTime);
+      const shapeInfo = transientShape(m.pm, p.stage);
+      const pmVal = el("pmValue");
+      pmVal.textContent = fmt(m.pm, 2) + " deg";
+      pmVal.className = "value " + pmClass(m.pm);
+      el("pmHint").textContent = Number.isFinite(m.pm) ? (m.pm >= 50 ? "Usually comfortable" : m.pm >= 35 ? "Marginal, check peaking" : "High risk") : "No crossover found";
+      el("bwValue").textContent = fmtHz(m.bw);
+      el("bwHint").textContent = "-3 dB bandwidth of H/(1+H)";
+      el("codeValue").textContent = `${p.icpCode}, ${p.rCode}`;
+      const cdrLabel = cdrModelLabel(p);
+      el("codeHint").textContent = `${stages[currentStage].name}; ${cornerLabel(p)}; ${vcoLookupLabel(p)}; ${icpLookupLabel(p)}; ${r1LookupLabel(p)}${cdrLabel ? "; " + cdrLabel : ""}`;
+      const pass = targetPass(p, m);
+      const targetValue = el("targetValue");
+      targetValue.textContent = pass ? "PASS" : "CHECK";
+      targetValue.className = "value " + (pass ? "ok" : "warn");
+      targetValue.style.fontSize = "22px";
+      targetValue.style.whiteSpace = "nowrap";
+      targetValue.nextElementSibling.textContent = `PM >= ${fmt(p.pmTarget, 0)} deg, BW ${fmtHz(p.bwMin)} to ${fmtHz(p.bwMax)}`;
+      const fastLockValue = el("fastLockValue");
+      fastLockValue.textContent = fastEst.pass ? "OK" : "RISK";
+      fastLockValue.className = "value " + (fastEst.pass ? "ok" : "warn");
+      fastLockValue.style.fontSize = "22px";
+      fastLockValue.style.whiteSpace = "nowrap";
+      el("fastLockHint").textContent =
+        `hold ${fmtTime(fastEst.holdTime)}, settle ${fmtTime(fastEst.settleTime)}, window ${fmt(fastEst.phaseWindowUi, 4)} UI`;
+      const settlingValue = el("settlingValue");
+      settlingValue.textContent = fmtTime(fastEst.settleTime);
+      settlingValue.className = "value " + settleInfo.cls;
+      settlingValue.style.fontSize = "22px";
+      settlingValue.style.whiteSpace = "nowrap";
+      el("settlingHint").textContent = settleInfo.hint;
+      const shapeValue = el("shapeValue");
+      shapeValue.textContent = shapeInfo.label;
+      shapeValue.className = "value " + shapeInfo.cls;
+      shapeValue.style.fontSize = "20px";
+      shapeValue.style.whiteSpace = "nowrap";
+      el("shapeHint").textContent = shapeInfo.hint;
+
+      lastSweep = sweep(p);
+      const fastLockPass = (_value, icpCode, rCode) => {
+        const point = {
+          pm: lastSweep.pm[icpCode - 1][rCode - 1],
+          bw: lastSweep.bw[icpCode - 1][rCode - 1]
+        };
+        return fastLockEstimate(p, point).pass;
+      };
+      const textMode = el("heatmapTextMode").value;
+      const passLabel = (value, icpCode, rCode) => {
+        const pass = fastLockPass(value, icpCode, rCode);
+        return { text: pass ? "PASS" : "NG", pass };
+      };
+      const pmValueLabel = value => Number.isFinite(value) ? { text: fmt(value, 1) } : { text: "--", pass: false };
+      const bwValueLabel = value => Number.isFinite(value) ? { text: shortHz(value) } : { text: "--", pass: false };
+      drawHeatmap(el("pmCanvas"), lastSweep.pm, p.icpCode, p.rCode, p.pmTarget, textMode === "value" ? pmValueLabel : passLabel);
+      drawHeatmap(el("bwCanvas"), lastSweep.bw, p.icpCode, p.rCode, p.bwTarget, textMode === "value" ? bwValueLabel : passLabel);
+      const pmRange = minMax(lastSweep.pm);
+      const bwRange = minMax(lastSweep.bw);
+      el("pmRange").textContent = pmRange.count
+        ? `${fmt(pmRange.min, 1)} to ${fmt(pmRange.max, 1)} deg, valid ${pmRange.count}/256, text=${textMode === "value" ? "PM" : "fast-lock"}`
+        : `no valid PM result, text=${textMode === "value" ? "PM" : "fast-lock"}`;
+      el("bwRange").textContent = bwRange.count
+        ? `${fmtHz(bwRange.min)} to ${fmtHz(bwRange.max)}, valid ${bwRange.count}/256, text=${textMode === "value" ? "BW" : "fast-lock"}`
+        : `no valid BW result, text=${textMode === "value" ? "BW" : "fast-lock"}`;
+
+      const recs = findRecommendations(p, lastSweep);
+      setRecommendation("recBalanced", recs.balanced);
+      setRecommendation("recMaxPm", recs.maxPm);
+      setRecommendation("recBw", recs.closestBw);
+
+      const bodeMarkers = poleZeroInfo(p, p.icpCode, p.rCode);
+      drawBode(el("bodeCanvas"), bodeData(p, p.icpCode, p.rCode), m, bodeMarkers);
+      const zeroCount = bodeMarkers.filter(item => item.kind === "zero").length;
+      const poleCount = bodeMarkers.filter(item => item.kind === "pole").length;
+      el("bodeInfo").textContent = `ICP ${p.icpCode}, LPF ${p.rCode}, ${cornerLabel(p)}, ${vcoLookupLabel(p)}, ${icpLookupLabel(p)}, ${r1LookupLabel(p)}${cdrLabel ? ", " + cdrLabel : ""}, PM ${fmt(m.pm, 1)} deg, CL BW ${fmtHz(m.bw)}, UGF ${fmtHz(m.ugf)}, global ${zeroCount}Z/${poleCount}P`;
+    }
+
+    document.querySelectorAll(".tabs button").forEach(btn => {
+      btn.addEventListener("click", () => loadStage(btn.dataset.stage));
+    });
+    document.querySelectorAll("input, select").forEach(input => {
+      input.addEventListener("change", update);
+    });
+    el("cornerPreset").addEventListener("change", () => {
+      const icpCode = el("icpCode").value;
+      const rCode = el("rCode").value;
+      applyCornerPreset(el("cornerPreset").value);
+      fillSelects();
+      el("icpCode").value = icpCode;
+      el("rCode").value = rCode;
+      update();
+    });
+    el("kvcoMode").addEventListener("change", () => {
+      if (el("kvcoMode").value === "lookup") {
+        const p = readParams();
+        if (p.vcoPoint) el("kvco").value = p.vcoPoint.kvco.toPrecision(6);
+      }
+      update();
+    });
+    el("recalc").addEventListener("click", update);
+    el("robustSearch").addEventListener("click", runRobustSearch);
+    ["robustFast", "robustFine", "robustCdr"].forEach(id => {
+      el(id).addEventListener("click", () => applyRobustPick(el(id)));
+    });
+    el("pmCanvas").addEventListener("click", event => heatmapPick(el("pmCanvas"), event));
+    el("bwCanvas").addEventListener("click", event => heatmapPick(el("bwCanvas"), event));
+    ["recBalanced", "recMaxPm", "recBw"].forEach(id => {
+      el(id).addEventListener("click", () => pickRecommendation(el(id)));
+    });
+
+    loadStage("fast");
+  </script>
+</body>
+</html>

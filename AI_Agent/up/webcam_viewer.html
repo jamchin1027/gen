@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scope Trigger Watcher</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: "Microsoft YaHei", "微软雅黑", SimSun, "宋体", Arial, sans-serif;
+      background: #101214;
+      color: #f4f7fb;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #101214;
+    }
+
+    main {
+      width: min(1120px, calc(100vw - 32px));
+      padding: 18px 0;
+    }
+
+    .toolbar, .monitorbar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .buttons, .controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    button, select, input {
+      height: 36px;
+      border: 1px solid #3a4149;
+      border-radius: 6px;
+      background: #1c2228;
+      color: #f4f7fb;
+      padding: 0 12px;
+      font-size: 14px;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #c8d0d9;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    input[type="range"] {
+      width: 150px;
+      padding: 0;
+    }
+
+    .stage {
+      position: relative;
+      width: 100%;
+      background: #050607;
+      border: 1px solid #2b3138;
+      border-radius: 8px;
+      overflow: hidden;
+      aspect-ratio: 16 / 9;
+    }
+
+    video, #overlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    video {
+      object-fit: contain;
+      background: #050607;
+    }
+
+    #overlay {
+      cursor: crosshair;
+    }
+
+    #status {
+      margin-top: 10px;
+      min-height: 24px;
+      color: #b9c2cc;
+      font-size: 14px;
+    }
+
+    #score {
+      color: #69d3ff;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .alarm {
+      color: #ff6d6d;
+      font-weight: 700;
+    }
+
+    .flash {
+      animation: flash-alert 0.45s alternate 8;
+    }
+
+    @keyframes flash-alert {
+      from { outline: 0 solid transparent; }
+      to { outline: 8px solid #ff4d4d; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="toolbar">
+      <select id="cameraSelect" aria-label="选择摄像头"></select>
+      <div class="buttons">
+        <button id="startButton">打开摄像头</button>
+        <button id="stopButton" disabled>关闭</button>
+        <button id="shotButton" disabled>截图</button>
+      </div>
+    </div>
+
+    <div class="monitorbar">
+      <div class="controls">
+        <button id="armButton" disabled>开始监测</button>
+        <button id="resetButton" disabled>重新取基准</button>
+        <button id="testButton">测试发消息</button>
+      </div>
+      <div class="controls">
+        <label>绿色增加阈值 <input id="thresholdSlider" type="range" min="0.05" max="5" step="0.05" value="0.45"></label>
+        <label>确认帧 <input id="confirmSlider" type="range" min="2" max="10" value="5"></label>
+        <span>绿色增加 <span id="score">0.00</span>%</span>
+      </div>
+    </div>
+
+    <div class="stage" id="stage">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="overlay"></canvas>
+    </div>
+    <canvas id="workCanvas" hidden></canvas>
+    <div id="status">打开摄像头后，拖框选中示波器波形区域，再点“开始监测”。</div>
+  </main>
+
+  <script>
+    const video = document.getElementById("video");
+    const overlay = document.getElementById("overlay");
+    const workCanvas = document.getElementById("workCanvas");
+    const cameraSelect = document.getElementById("cameraSelect");
+    const startButton = document.getElementById("startButton");
+    const stopButton = document.getElementById("stopButton");
+    const shotButton = document.getElementById("shotButton");
+    const armButton = document.getElementById("armButton");
+    const resetButton = document.getElementById("resetButton");
+    const testButton = document.getElementById("testButton");
+    const thresholdSlider = document.getElementById("thresholdSlider");
+    const confirmSlider = document.getElementById("confirmSlider");
+    const scoreText = document.getElementById("score");
+    const statusText = document.getElementById("status");
+
+    const overlayCtx = overlay.getContext("2d");
+    const workCtx = workCanvas.getContext("2d", { willReadFrequently: true });
+
+    let stream = null;
+    let roi = null;
+    let drawing = false;
+    let dragStart = null;
+    let baseline = null;
+    let baselineGreenPercent = 0;
+    let currentGreenPercent = 0;
+    let monitorTimer = null;
+    let aboveThresholdCount = 0;
+    let monitorStartedAt = 0;
+    let alertSent = false;
+
+    function setStatus(message, isAlarm = false) {
+      statusText.textContent = message;
+      statusText.className = isAlarm ? "alarm" : "";
+    }
+
+    function resizeOverlay() {
+      const rect = overlay.getBoundingClientRect();
+      overlay.width = Math.round(rect.width * devicePixelRatio);
+      overlay.height = Math.round(rect.height * devicePixelRatio);
+      drawOverlay();
+    }
+
+    function drawOverlay() {
+      overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
+      if (!roi) return;
+
+      const scaleX = overlay.width;
+      const scaleY = overlay.height;
+      const x = roi.x * scaleX;
+      const y = roi.y * scaleY;
+      const w = roi.w * scaleX;
+      const h = roi.h * scaleY;
+
+      overlayCtx.save();
+      overlayCtx.fillStyle = "rgba(0, 0, 0, 0.28)";
+      overlayCtx.fillRect(0, 0, overlay.width, overlay.height);
+      overlayCtx.clearRect(x, y, w, h);
+      overlayCtx.strokeStyle = "#69d3ff";
+      overlayCtx.lineWidth = 2 * devicePixelRatio;
+      overlayCtx.strokeRect(x, y, w, h);
+      overlayCtx.restore();
+    }
+
+    function pointerToRatio(event) {
+      const rect = overlay.getBoundingClientRect();
+      return {
+        x: Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)),
+        y: Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height))
+      };
+    }
+
+    function setRoiFromPoints(a, b) {
+      const x1 = Math.min(a.x, b.x);
+      const y1 = Math.min(a.y, b.y);
+      const x2 = Math.max(a.x, b.x);
+      const y2 = Math.max(a.y, b.y);
+      roi = { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
+      drawOverlay();
+    }
+
+    function getVideoRect() {
+      const videoAspect = video.videoWidth / video.videoHeight;
+      const canvasAspect = overlay.width / overlay.height;
+      let x = 0;
+      let y = 0;
+      let w = overlay.width;
+      let h = overlay.height;
+
+      if (videoAspect > canvasAspect) {
+        h = overlay.width / videoAspect;
+        y = (overlay.height - h) / 2;
+      } else {
+        w = overlay.height * videoAspect;
+        x = (overlay.width - w) / 2;
+      }
+
+      return { x, y, w, h };
+    }
+
+    function captureRoiGrayscale() {
+      if (!roi || !video.videoWidth || !video.videoHeight) return null;
+
+      const displayRect = getVideoRect();
+      const left = Math.max(displayRect.x, roi.x * overlay.width);
+      const top = Math.max(displayRect.y, roi.y * overlay.height);
+      const right = Math.min(displayRect.x + displayRect.w, (roi.x + roi.w) * overlay.width);
+      const bottom = Math.min(displayRect.y + displayRect.h, (roi.y + roi.h) * overlay.height);
+      if (right <= left || bottom <= top) return null;
+
+      const sx = ((left - displayRect.x) / displayRect.w) * video.videoWidth;
+      const sy = ((top - displayRect.y) / displayRect.h) * video.videoHeight;
+      const sw = ((right - left) / displayRect.w) * video.videoWidth;
+      const sh = ((bottom - top) / displayRect.h) * video.videoHeight;
+
+      const sampleW = 160;
+      const sampleH = 90;
+      workCanvas.width = sampleW;
+      workCanvas.height = sampleH;
+      workCtx.drawImage(video, sx, sy, sw, sh, 0, 0, sampleW, sampleH);
+
+      const image = workCtx.getImageData(0, 0, sampleW, sampleH).data;
+      const gray = new Uint8Array(sampleW * sampleH);
+      for (let i = 0, p = 0; i < image.length; i += 4, p++) {
+        gray[p] = Math.round(image[i] * 0.299 + image[i + 1] * 0.587 + image[i + 2] * 0.114);
+      }
+      return gray;
+    }
+
+    function captureRoiGreenPercent() {
+      if (!roi || !video.videoWidth || !video.videoHeight) return null;
+
+      const displayRect = getVideoRect();
+      const left = Math.max(displayRect.x, roi.x * overlay.width);
+      const top = Math.max(displayRect.y, roi.y * overlay.height);
+      const right = Math.min(displayRect.x + displayRect.w, (roi.x + roi.w) * overlay.width);
+      const bottom = Math.min(displayRect.y + displayRect.h, (roi.y + roi.h) * overlay.height);
+      if (right <= left || bottom <= top) return null;
+
+      const sx = ((left - displayRect.x) / displayRect.w) * video.videoWidth;
+      const sy = ((top - displayRect.y) / displayRect.h) * video.videoHeight;
+      const sw = ((right - left) / displayRect.w) * video.videoWidth;
+      const sh = ((bottom - top) / displayRect.h) * video.videoHeight;
+
+      const sampleW = 220;
+      const sampleH = 124;
+      workCanvas.width = sampleW;
+      workCanvas.height = sampleH;
+      workCtx.drawImage(video, sx, sy, sw, sh, 0, 0, sampleW, sampleH);
+
+      const image = workCtx.getImageData(0, 0, sampleW, sampleH).data;
+      let greenPixels = 0;
+      const totalPixels = sampleW * sampleH;
+
+      for (let i = 0; i < image.length; i += 4) {
+        const r = image[i];
+        const g = image[i + 1];
+        const b = image[i + 2];
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        const saturation = max === 0 ? 0 : (max - min) / max;
+
+        if (
+          g >= 85 &&
+          saturation >= 0.24 &&
+          g - r >= 18 &&
+          g - b >= 18 &&
+          g >= r * 1.18 &&
+          g >= b * 1.18
+        ) {
+          greenPixels++;
+        }
+      }
+
+      return (greenPixels / totalPixels) * 100;
+    }
+
+    function captureTriggerImageDataUrl() {
+      if (!roi || !video.videoWidth || !video.videoHeight) return "";
+
+      const displayRect = getVideoRect();
+      const left = Math.max(displayRect.x, roi.x * overlay.width);
+      const top = Math.max(displayRect.y, roi.y * overlay.height);
+      const right = Math.min(displayRect.x + displayRect.w, (roi.x + roi.w) * overlay.width);
+      const bottom = Math.min(displayRect.y + displayRect.h, (roi.y + roi.h) * overlay.height);
+      if (right <= left || bottom <= top) return "";
+
+      const sx = ((left - displayRect.x) / displayRect.w) * video.videoWidth;
+      const sy = ((top - displayRect.y) / displayRect.h) * video.videoHeight;
+      const sw = ((right - left) / displayRect.w) * video.videoWidth;
+      const sh = ((bottom - top) / displayRect.h) * video.videoHeight;
+      const maxWidth = 1280;
+      const scale = Math.min(1, maxWidth / sw);
+
+      workCanvas.width = Math.max(1, Math.round(sw * scale));
+      workCanvas.height = Math.max(1, Math.round(sh * scale));
+      workCtx.drawImage(video, sx, sy, sw, sh, 0, 0, workCanvas.width, workCanvas.height);
+      return workCanvas.toDataURL("image/png");
+    }
+
+    function diffScore(current, reference) {
+      let sum = 0;
+      let changedPixels = 0;
+      let strongPixels = 0;
+      for (let i = 0; i < current.length; i++) {
+        const diff = Math.abs(current[i] - reference[i]);
+        sum += diff;
+        if (diff > 16) changedPixels++;
+        if (diff > 48) strongPixels++;
+      }
+
+      const meanDiff = sum / current.length;
+      const changedPercent = (changedPixels / current.length) * 100;
+      const strongPercent = (strongPixels / current.length) * 100;
+
+      return meanDiff + changedPercent * 1.2 + strongPercent * 2.4;
+    }
+
+    function adaptBaseline(current) {
+      if (!baseline) return;
+      for (let i = 0; i < baseline.length; i++) {
+        baseline[i] = Math.round(baseline[i] * 0.96 + current[i] * 0.04);
+      }
+    }
+
+    function takeBaseline() {
+      const greenPercent = captureRoiGreenPercent();
+      if (greenPercent === null) {
+        setStatus("请先框选示波器波形区域。");
+        return false;
+      }
+      baseline = true;
+      baselineGreenPercent = greenPercent;
+      currentGreenPercent = greenPercent;
+      scoreText.textContent = "0.00";
+      setStatus(`已记录当前绿色基准 ${baselineGreenPercent.toFixed(2)}%，等待绿色波形出现。`);
+      return true;
+    }
+
+    function startMonitor() {
+      if (!stream) {
+        setStatus("请先打开摄像头。");
+        return;
+      }
+      if (!roi || roi.w < 0.03 || roi.h < 0.03) {
+        setStatus("请拖框选中示波器波形区域。");
+        return;
+      }
+      if (!takeBaseline()) return;
+
+      clearInterval(monitorTimer);
+      monitorTimer = setInterval(checkFrame, 300);
+      aboveThresholdCount = 0;
+      monitorStartedAt = performance.now();
+      alertSent = false;
+      armButton.disabled = true;
+      resetButton.disabled = false;
+      setStatus("监测已启动，前 2 秒用于稳定画面。");
+    }
+
+    function stopMonitor() {
+      clearInterval(monitorTimer);
+      monitorTimer = null;
+      armButton.disabled = !stream;
+    }
+
+    function checkFrame() {
+      const greenPercent = captureRoiGreenPercent();
+      if (greenPercent === null || !baseline) return;
+
+      currentGreenPercent = greenPercent;
+      const score = Math.max(0, greenPercent - baselineGreenPercent);
+      const threshold = Number(thresholdSlider.value);
+      scoreText.textContent = score.toFixed(2);
+
+      if (performance.now() - monitorStartedAt < 2000) {
+        baselineGreenPercent = greenPercent;
+        aboveThresholdCount = 0;
+        return;
+      }
+
+      if (score >= threshold) {
+        aboveThresholdCount++;
+        setStatus(`检测到绿色增加：${aboveThresholdCount}/${confirmSlider.value} 帧，新增 ${score.toFixed(2)}%。`);
+        if (aboveThresholdCount >= Number(confirmSlider.value)) {
+          stopMonitor();
+          notifyTriggered(score);
+        }
+      } else {
+        if (aboveThresholdCount > 0) {
+          setStatus("变化未持续，已忽略。");
+        }
+        aboveThresholdCount = 0;
+        if (greenPercent <= baselineGreenPercent + threshold * 0.35) {
+          baselineGreenPercent = baselineGreenPercent * 0.98 + greenPercent * 0.02;
+        }
+      }
+    }
+
+    async function notifyTriggered(score) {
+      if (alertSent) return;
+      alertSent = true;
+      flashStage();
+      setStatus(`检测到绿色波形出现，正在给罗洋发信鸿消息。绿色增加 ${score.toFixed(2)}%。`, true);
+      await sendHichatAlert(score);
+    }
+
+    async function sendHichatAlert(score) {
+      try {
+        const imageDataUrl = captureTriggerImageDataUrl();
+        await fetch("http://127.0.0.1:8765/alert", {
+          method: "POST",
+          headers: { "Content-Type": "application/json; charset=utf-8" },
+          body: JSON.stringify({
+            score: score.toFixed(2),
+            imageDataUrl
+          })
+        });
+        setStatus(`已请求信鸿发送消息。绿色增加 ${score.toFixed(2)}%。`, true);
+      } catch {
+        setStatus("已本地报警，但没有连上信鸿发送代理。请先运行 scope_trigger_server.ps1。", true);
+      }
+    }
+
+    function flashStage() {
+      const stage = document.getElementById("stage");
+      stage.classList.remove("flash");
+      void stage.offsetWidth;
+      stage.classList.add("flash");
+    }
+
+    function testAlert() {
+      alertSent = false;
+      notifyTriggered(Number(scoreText.textContent) || 0);
+    }
+
+    async function refreshCameras() {
+      if (!navigator.mediaDevices?.enumerateDevices) {
+        setStatus("当前浏览器不支持摄像头枚举。");
+        return;
+      }
+
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cameras = devices.filter((device) => device.kind === "videoinput");
+      cameraSelect.innerHTML = "";
+
+      cameras.forEach((camera, index) => {
+        const option = document.createElement("option");
+        option.value = camera.deviceId;
+        option.textContent = camera.label || `摄像头 ${index + 1}`;
+        cameraSelect.appendChild(option);
+      });
+
+      if (cameras.length === 0) {
+        const option = document.createElement("option");
+        option.textContent = "未找到摄像头";
+        cameraSelect.appendChild(option);
+      }
+    }
+
+    function stopCamera() {
+      stopMonitor();
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+        stream = null;
+      }
+      video.srcObject = null;
+      startButton.disabled = false;
+      stopButton.disabled = true;
+      shotButton.disabled = true;
+      armButton.disabled = true;
+      resetButton.disabled = true;
+      baseline = null;
+      setStatus("摄像头已关闭。");
+    }
+
+    async function startCamera() {
+      stopCamera();
+      try {
+        const selectedId = cameraSelect.value;
+        const videoConstraint = selectedId
+          ? { deviceId: { exact: selectedId }, width: { ideal: 1280 }, height: { ideal: 720 } }
+          : { width: { ideal: 1280 }, height: { ideal: 720 } };
+
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: videoConstraint,
+          audio: false
+        });
+
+        video.srcObject = stream;
+        startButton.disabled = true;
+        stopButton.disabled = false;
+        shotButton.disabled = false;
+        armButton.disabled = false;
+        setStatus("摄像头已打开。拖框选中示波器波形区域。");
+        await refreshCameras();
+      } catch (error) {
+        setStatus(`打开失败：${error.message}`);
+      }
+    }
+
+    function saveSnapshot() {
+      const width = video.videoWidth;
+      const height = video.videoHeight;
+      if (!width || !height) {
+        setStatus("当前没有可截图的视频帧。");
+        return;
+      }
+
+      workCanvas.width = width;
+      workCanvas.height = height;
+      workCtx.drawImage(video, 0, 0, width, height);
+
+      const link = document.createElement("a");
+      link.download = `scope-${new Date().toISOString().replace(/[:.]/g, "-")}.png`;
+      link.href = workCanvas.toDataURL("image/png");
+      link.click();
+      setStatus("截图已保存。");
+    }
+
+    overlay.addEventListener("pointerdown", (event) => {
+      drawing = true;
+      dragStart = pointerToRatio(event);
+      setRoiFromPoints(dragStart, dragStart);
+    });
+
+    overlay.addEventListener("pointermove", (event) => {
+      if (!drawing) return;
+      setRoiFromPoints(dragStart, pointerToRatio(event));
+    });
+
+    overlay.addEventListener("pointerup", (event) => {
+      if (!drawing) return;
+      drawing = false;
+      setRoiFromPoints(dragStart, pointerToRatio(event));
+      baseline = null;
+      setStatus("选区已更新。点“开始监测”会把当前画面作为基准。");
+    });
+
+    startButton.addEventListener("click", startCamera);
+    stopButton.addEventListener("click", stopCamera);
+    shotButton.addEventListener("click", saveSnapshot);
+    armButton.addEventListener("click", startMonitor);
+    resetButton.addEventListener("click", takeBaseline);
+    testButton.addEventListener("click", testAlert);
+    cameraSelect.addEventListener("change", () => {
+      if (stream) startCamera();
+    });
+
+    addEventListener("resize", resizeOverlay);
+    resizeOverlay();
+    refreshCameras().catch((error) => setStatus(`初始化失败：${error.message}`));
+  </script>
+</body>
+</html>

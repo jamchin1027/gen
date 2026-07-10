@@ -1,0 +1,2971 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Waveform Protocol Checker</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #eef2f6;
+      --panel: #fff;
+      --ink: #18212b;
+      --muted: #637181;
+      --line: #d8e1ea;
+      --line-soft: #e8eef4;
+      --accent: #1769aa;
+      --accent-2: #0f8a5f;
+      --warn: #b76b00;
+      --bad: #b42318;
+      --good: #087443;
+      --chip: #f3f7fb;
+      --shadow: 0 10px 24px rgba(24, 33, 43, .08);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      font-size: 13px;
+    }
+    header {
+      height: 58px;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+    }
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+    .sub {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    main {
+      display: grid;
+      grid-template-columns: 360px minmax(0, 1fr);
+      gap: 14px;
+      padding: 14px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      min-width: 0;
+    }
+    .side {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .section {
+      padding: 14px;
+      border-bottom: 1px solid var(--line-soft);
+    }
+    .section:last-child { border-bottom: 0; }
+    h2 {
+      margin: 0 0 10px;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: #344252;
+    }
+    label {
+      display: block;
+      color: var(--muted);
+      margin-bottom: 5px;
+      font-size: 12px;
+    }
+    input, select, textarea, button {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 13px;
+    }
+    input[type="file"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px dashed #b6c4d2;
+      border-radius: 7px;
+      background: #f8fbfd;
+    }
+    input[type="number"], input[type="text"], select, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 7px 8px;
+      background: #fff;
+      color: var(--ink);
+    }
+    textarea {
+      min-height: 74px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+      margin-bottom: 10px;
+    }
+    .grid3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .row input[type="checkbox"] { width: auto; }
+    button {
+      border: 1px solid #0d5d9a;
+      border-radius: 6px;
+      background: var(--accent);
+      color: #fff;
+      padding: 8px 12px;
+      cursor: pointer;
+      min-height: 34px;
+    }
+    button.secondary {
+      color: var(--accent);
+      background: #f7fbff;
+      border-color: #abc9e3;
+    }
+    button:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+    .content {
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr);
+      gap: 12px;
+    }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(120px, 1fr));
+      gap: 10px;
+      padding: 12px;
+    }
+    .metric {
+      background: #f7fafc;
+      border: 1px solid var(--line-soft);
+      border-radius: 7px;
+      padding: 9px;
+      min-width: 0;
+    }
+    .metric .k {
+      color: var(--muted);
+      font-size: 11px;
+      margin-bottom: 4px;
+      white-space: nowrap;
+    }
+    .metric .v {
+      font-size: 16px;
+      font-weight: 700;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .plotWrap {
+      padding: 12px;
+    }
+    .plotTools {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(110px, 1fr));
+      gap: 8px;
+      align-items: end;
+      margin-bottom: 10px;
+    }
+    .plotTools .row {
+      margin-top: 0;
+      align-items: center;
+      min-height: 34px;
+    }
+    .plotTools button {
+      width: 100%;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 310px;
+      background: #fbfdff;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      cursor: grab;
+      touch-action: none;
+    }
+    canvas.dragging { cursor: grabbing; }
+    .tabs {
+      display: flex;
+      gap: 6px;
+      padding: 10px 12px 0;
+      border-bottom: 1px solid var(--line-soft);
+    }
+    .tab {
+      border: 1px solid var(--line);
+      border-bottom: 0;
+      background: #f8fbfd;
+      color: #334252;
+      border-radius: 6px 6px 0 0;
+      padding: 7px 10px;
+      cursor: pointer;
+    }
+    .tab.active {
+      background: #fff;
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .tabBody {
+      padding: 12px;
+      min-height: 240px;
+      max-height: 430px;
+      overflow: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line-soft);
+      padding: 7px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      position: sticky;
+      top: 0;
+      background: #f6f9fc;
+      z-index: 1;
+    }
+    tr.ctrlLocate {
+      cursor: pointer;
+    }
+    tr.ctrlLocate:hover {
+      background: #fff7d6;
+    }
+    tr.ctrlTrendSelected {
+      background: #eaf4ff;
+    }
+    .ctrlTrend {
+      margin-bottom: 12px;
+      padding: 11px 12px;
+      border: 1px solid #bdd7ee;
+      border-radius: 7px;
+      background: #f7fbff;
+    }
+    .ctrlTrend h2 {
+      margin-bottom: 8px;
+      color: var(--accent);
+    }
+    .ctrlTrendMeta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-bottom: 9px;
+      color: var(--muted);
+    }
+    .ctrlTrendChipRow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .ctrlTrendJump {
+      cursor: pointer;
+    }
+    .ctrlTrendChip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 3px 7px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: #fff;
+      color: var(--ink);
+      font-size: 12px;
+    }
+    .ctrlTrendChip.changed {
+      border-color: #e1a332;
+      background: #fff8df;
+      color: #7a5200;
+      font-weight: 700;
+    }
+    tr.ctrlTrendJump:hover {
+      background: #fff7d6;
+    }
+    .bits {
+      font-family: Arial, Helvetica, sans-serif;
+      word-break: break-all;
+      line-height: 1.65;
+    }
+    .mono {
+      font-family: Arial, Helvetica, sans-serif;
+      white-space: pre-wrap;
+      line-height: 1.5;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: var(--chip);
+      border: 1px solid var(--line);
+      font-size: 12px;
+    }
+    .pass { color: var(--good); font-weight: 700; }
+    .fail { color: var(--bad); font-weight: 700; }
+    .warn { color: var(--warn); font-weight: 700; }
+    .empty {
+      color: var(--muted);
+      padding: 18px;
+      text-align: center;
+    }
+    @media (max-width: 980px) {
+      main { grid-template-columns: 1fr; }
+      .metrics { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+      .plotTools { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Waveform Protocol Checker</h1>
+      <div class="sub">示波器 CSV 波形判决、bit 恢复、数据解码与规格规则检查</div>
+    </div>
+    <div class="pill" id="status">等待 CSV</div>
+  </header>
+
+  <main>
+    <aside class="side">
+      <div class="panel">
+        <div class="section">
+          <h2>CSV 输入</h2>
+          <input id="file" type="file" accept=".csv,.txt">
+          <div class="grid2" style="margin-top:10px">
+            <div>
+              <label>最大读取行数</label>
+              <input id="maxRows" type="number" min="1000" step="1000" value="1000000">
+            </div>
+            <div>
+              <label>解码最大点数</label>
+              <input id="maxSamples" type="number" min="0" step="1000" value="0">
+            </div>
+          </div>
+          <div class="grid2" style="margin-top:10px">
+            <div>
+              <label>Time 列</label>
+              <select id="timeCol"></select>
+            </div>
+            <div>
+              <label>Voltage/Data 列</label>
+              <select id="voltCol"></select>
+            </div>
+          </div>
+          <div class="row">
+            <button id="reload" class="secondary">重新解析</button>
+            <button id="decode">解码</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>判决与时钟</h2>
+          <div class="grid2">
+            <div>
+              <label>阈值模式</label>
+              <select id="thresholdMode">
+                <option value="auto">Auto mid-level</option>
+                <option value="manual">Manual</option>
+              </select>
+            </div>
+            <div>
+              <label>阈值 V</label>
+              <input id="threshold" type="number" step="0.001" value="0">
+            </div>
+          </div>
+          <div class="grid2">
+            <div>
+              <label>Data rate 模式</label>
+              <select id="rateMode">
+                <option value="auto">Auto from edges</option>
+                <option value="manual">Manual</option>
+              </select>
+            </div>
+            <div>
+              <label>Data rate</label>
+              <input id="dataRate" type="number" step="0.001" value="2.6">
+            </div>
+          </div>
+          <button id="autoRate" class="secondary" style="width:100%;margin-bottom:10px">识别速率并填入 Manual</button>
+          <div class="grid3">
+            <div>
+              <label>单位</label>
+              <select id="rateUnit">
+                <option value="Gbps">Gbps</option>
+                <option value="Mbps">Mbps</option>
+                <option value="Hz">Hz</option>
+              </select>
+            </div>
+            <div>
+              <label>采样相位 UI</label>
+              <input id="samplePhase" type="number" min="0" max="1" step="0.01" value="0.50">
+            </div>
+            <div>
+              <label>跳过 bit</label>
+              <input id="skipBits" type="number" min="0" step="1" value="0">
+            </div>
+          </div>
+          <div class="row">
+            <input id="invert" type="checkbox">
+            <label for="invert" style="margin:0">反相判决</label>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>数据格式</h2>
+          <div class="grid2">
+            <div>
+              <label>Word bits</label>
+              <input id="wordBits" type="number" min="1" max="64" step="1" value="8">
+            </div>
+            <div>
+              <label>Bit order</label>
+              <input id="bitOrderFixed" type="text" value="LSB first fixed" disabled>
+            </div>
+          </div>
+          <div class="grid2">
+            <div>
+              <label>显示 words</label>
+              <input id="maxWords" type="number" min="16" step="16" value="256">
+            </div>
+            <div>
+              <label>Run-length 限制</label>
+              <input id="maxRun" type="number" min="0" step="1" value="0">
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>规格检查规则</h2>
+          <label>必含 bit pattern，逗号分隔，例如 001111,110000</label>
+          <textarea id="patterns" placeholder="可先留空；后面把文档里的 sync / training / command pattern 填进来"></textarea>
+          <div class="grid2" style="margin-top:10px">
+            <div>
+              <label>最小 data rate</label>
+              <input id="minRate" type="number" step="0.001" value="0">
+            </div>
+            <div>
+              <label>最大 data rate</label>
+              <input id="maxRate" type="number" step="0.001" value="0">
+            </div>
+          </div>
+          <button id="exportReport" class="secondary" style="width:100%;margin-top:8px">导出报告 JSON</button>
+        </div>
+
+        <div class="section">
+          <h2>CHPI 协议检查</h2>
+          <div class="row">
+            <input id="chpiEnable" type="checkbox" checked>
+            <label for="chpiEnable" style="margin:0">启用 CHPI2.01 文档规则</label>
+          </div>
+          <div class="grid2" style="margin-top:10px">
+            <div>
+              <label>Packet bits</label>
+              <input id="chpiTokenBits" type="number" min="4" max="32" step="1" value="10">
+            </div>
+            <div>
+              <label>LSP 最小次数</label>
+              <input id="chpiMinLsp" type="number" min="0" max="100" step="1" value="5">
+            </div>
+            <div>
+              <label>K-code 容错 mismatch</label>
+              <input id="chpiKFuzzy" type="number" min="0" max="4" step="1" value="2">
+            </div>
+            <div>
+              <label>K辅助扫速率 ±%</label>
+              <input id="chpiKClockSpan" type="number" min="0" max="10" step="0.1" value="2">
+            </div>
+            <div>
+              <label>K辅助最大 bits</label>
+              <input id="chpiKClockBits" type="number" min="1000" max="200000" step="1000" value="12000">
+            </div>
+          </div>
+          <div class="row">
+            <input id="chpiKClockAssist" type="checkbox" checked>
+            <label for="chpiKClockAssist" style="margin:0">K-code 辅助同步：自动微调 data rate 和采样相位</label>
+          </div>
+          <div class="row">
+            <input id="chpiCheck420" type="checkbox">
+            <label for="chpiCheck420" style="margin:0">兼容检查 413/420 编码块（非本 PDF 主规则）</label>
+          </div>
+          <div class="row">
+            <input id="chpiCheckScramble" type="checkbox" checked>
+            <label for="chpiCheckScramble" style="margin:0">检查 SCR/LFSR G24 说明项</label>
+          </div>
+          <label style="margin-top:10px">K-code bit pattern 覆盖（可选）</label>
+          <textarea id="chpiKPatterns" placeholder="已内置 K1~K4 type1/type2，按 40'b[39:0] 整个 40bit 反转后的 LSB-first 串行顺序匹配。仅当需要覆盖时填写，例如 K1=40bit 或 K1'=10bit,G1'=10bit"></textarea>
+          <label style="margin-top:10px">K-code bit 串自检（可选）</label>
+          <textarea id="chpiBitProbe" placeholder="把 Bits 面板里怀疑包含 K2 的 0/1 字符串粘到这里，解码时会直接搜 K1-K4，排除波形采样问题"></textarea>
+          <label style="margin-top:10px">8B/10B 编译码表覆盖（可选）</label>
+          <textarea id="custom8b10bTable" placeholder="已内置 8b10b.xlsx 的 256 项表。这里留空即可；如需临时覆盖，每行格式：DIN DOUT1 DOUT2，例如 00 0001100010 1110011101"></textarea>
+        </div>
+      </div>
+    </aside>
+
+    <section class="content">
+      <div class="panel metrics">
+        <div class="metric"><div class="k">Samples</div><div class="v" id="mSamples">-</div></div>
+        <div class="metric"><div class="k">Duration</div><div class="v" id="mDuration">-</div></div>
+        <div class="metric"><div class="k">Threshold</div><div class="v" id="mThreshold">-</div></div>
+        <div class="metric"><div class="k">Estimated UI</div><div class="v" id="mUI">-</div></div>
+        <div class="metric"><div class="k">Decoded Bits</div><div class="v" id="mBits">-</div></div>
+        <div class="metric"><div class="k">Check</div><div class="v" id="mCheck">-</div></div>
+      </div>
+
+      <div class="panel plotWrap">
+        <div class="plotTools">
+          <div>
+            <label>X scale</label>
+            <select id="plotXMode">
+              <option value="all">All waveform</option>
+              <option value="decoded">Decoded range</option>
+              <option value="window">Bit window</option>
+            </select>
+          </div>
+          <div>
+            <label>Start bit</label>
+            <input id="plotStartBit" type="number" min="0" step="1" value="0">
+          </div>
+          <div>
+            <label>Show bits</label>
+            <input id="plotBitCount" type="number" min="10" step="10" value="400">
+          </div>
+          <div class="row">
+            <input id="plotAutoY" type="checkbox" checked>
+            <label for="plotAutoY" style="margin:0">自动 Y scale</label>
+          </div>
+          <div class="row">
+            <input id="plotAnnotations" type="checkbox" checked>
+            <label for="plotAnnotations" style="margin:0">标注 CHPI</label>
+          </div>
+          <button id="plotFit" class="secondary">Auto fit</button>
+        </div>
+        <canvas id="plot" width="1200" height="360"></canvas>
+      </div>
+
+      <div class="panel">
+        <div class="tabs">
+          <button class="tab active" data-tab="checks">检查结果</button>
+          <button class="tab" data-tab="ctrl">CTRL 解码</button>
+          <button class="tab" data-tab="words">Words</button>
+          <button class="tab" data-tab="bits">Bits</button>
+          <button class="tab" data-tab="edges">Edges</button>
+        </div>
+        <div id="tabBody" class="tabBody">
+          <div class="empty">导入 CSV 后点击“解码”。</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const state = {
+      rawText: '',
+      headers: [],
+      rows: [],
+      samples: [],
+      numericCache: new Map(),
+      result: null,
+      plotRangeOverride: null,
+      plotDrag: null,
+      columnChangeTimer: null,
+      buildSeq: 0,
+      worker: null,
+      columnsDirty: false,
+      selectedBit: null,
+      selectedCtrlTrend: null,
+      custom8b10bCache: { text: null, map: null },
+      activeTab: 'checks'
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    function setStatus(text, cls = '') {
+      const s = $('status');
+      s.textContent = text;
+      s.className = 'pill ' + cls;
+    }
+
+    function splitCsvLine(line) {
+      const out = [];
+      let cur = '', q = false;
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (c === '"') {
+          if (q && line[i + 1] === '"') { cur += '"'; i++; }
+          else q = !q;
+        } else if (c === ',' && !q) {
+          out.push(cur.trim());
+          cur = '';
+        } else {
+          cur += c;
+        }
+      }
+      out.push(cur.trim());
+      return out;
+    }
+
+    function parseNumber(v) {
+      if (v == null) return NaN;
+      let s = String(v).trim();
+      if (!s) return NaN;
+      s = s.replace(/[，,]/g, '');
+      const mult = s.match(/^([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)\s*([pnumkMGT]?)(s|V|v)?$/);
+      if (!mult) return Number(s);
+      const n = Number(mult[1]);
+      const u = mult[2];
+      const scale = { p:1e-12, n:1e-9, u:1e-6, m:1e-3, k:1e3, M:1e6, G:1e9, T:1e12 }[u] ?? 1;
+      return n * scale;
+    }
+
+    function createCsvWorker() {
+      const workerCode = `
+        function splitCsvLine(line) {
+          const out = [];
+          let cur = '', q = false;
+          for (let i = 0; i < line.length; i++) {
+            const c = line[i];
+            if (c === '"') {
+              if (q && line[i + 1] === '"') { cur += '"'; i++; }
+              else q = !q;
+            } else if (c === ',' && !q) {
+              out.push(cur.trim());
+              cur = '';
+            } else {
+              cur += c;
+            }
+          }
+          out.push(cur.trim());
+          return out;
+        }
+        function parseNumber(v) {
+          if (v == null) return NaN;
+          let s = String(v).trim();
+          if (!s) return NaN;
+          s = s.replace(/[，,]/g, '');
+          const mult = s.match(/^([-+]?\\d*\\.?\\d+(?:[eE][-+]?\\d+)?)\\s*([pnumkMGT]?)(s|V|v)?$/);
+          if (!mult) return Number(s);
+          const n = Number(mult[1]);
+          const u = mult[2];
+          const scale = { p:1e-12, n:1e-9, u:1e-6, m:1e-3, k:1e3, M:1e6, G:1e9, T:1e12 }[u] ?? 1;
+          return n * scale;
+        }
+        function guessColumn(headers, previewRows, kind) {
+          const names = headers.map(h => String(h).toLowerCase());
+          const timeHints = ['time', 'second', 'sec', '时间', 't'];
+          const voltHints = ['volt', 'ch', 'channel', 'ampl', 'data', '电压', 'v'];
+          const hints = kind === 'time' ? timeHints : voltHints;
+          for (let i = 0; i < names.length; i++) {
+            if (hints.some(h => names[i].includes(h))) return i;
+          }
+          if (kind === 'time') return 0;
+          let best = Math.min(1, Math.max(0, headers.length - 1)), bestSpan = -Infinity;
+          for (let c = 0; c < headers.length; c++) {
+            let min = Infinity, max = -Infinity, count = 0;
+            for (const r of previewRows) {
+              const v = parseNumber(r[c]);
+              if (!Number.isFinite(v)) continue;
+              if (v < min) min = v;
+              if (v > max) max = v;
+              count++;
+            }
+            if (count >= 10 && c !== 0 && max - min > bestSpan) {
+              bestSpan = max - min;
+              best = c;
+            }
+          }
+          return best;
+        }
+        function parseCsvSamples(text, timeCol, dataCol, maxRows, maxSamples, taskId) {
+          const rawLines = text.split(/\\r?\\n/);
+          let headerIdx = 0;
+          while (headerIdx < rawLines.length && splitCsvLine(rawLines[headerIdx]).length < 2) headerIdx++;
+          const first = splitCsvLine(rawLines[headerIdx] || '');
+          const numericCount = first.filter(x => Number.isFinite(parseNumber(x))).length;
+          const hasHeader = numericCount < first.length / 2;
+          const headers = hasHeader ? first : first.map((_, i) => 'col' + i);
+          const dataStart = hasHeader ? headerIdx + 1 : headerIdx;
+          const available = Math.max(0, rawLines.length - dataStart);
+          const rowLimit = Math.min(available, maxRows);
+          const decimStep = maxSamples > 0 ? Math.max(1, Math.ceil(rowLimit / maxSamples)) : 1;
+          const previewRows = [];
+          let guessedTime = timeCol;
+          let guessedData = dataCol;
+          for (let i = 0; i < Math.min(rowLimit, 2000); i++) {
+            const line = rawLines[dataStart + i];
+            if (line && line.trim()) previewRows.push(splitCsvLine(line));
+          }
+          if (guessedTime == null || guessedData == null) {
+            guessedTime = guessColumn(headers, previewRows, 'time');
+            guessedData = guessColumn(headers, previewRows, 'volt');
+            postMessage({ taskId, type: 'headers', headers, guessedTime, guessedData, rowLimit, decimStep });
+          }
+          const samples = [];
+          let lastT = -Infinity, sorted = true;
+          for (let i = 0; i < rowLimit; i += decimStep) {
+            const line = rawLines[dataStart + i];
+            if (!line || !line.trim()) continue;
+            const r = splitCsvLine(line);
+            const t = parseNumber(r[guessedTime]);
+            const v = parseNumber(r[guessedData]);
+            if (Number.isFinite(t) && Number.isFinite(v)) {
+              if (t < lastT) sorted = false;
+              lastT = t;
+              samples.push({ t, v });
+            }
+            if (i > 0 && i % 20000 === 0) {
+              postMessage({ taskId, type: 'progress', pct: Math.round(i / rowLimit * 100) });
+            }
+          }
+          if (!sorted) samples.sort((a, b) => a.t - b.t);
+          return { headers, guessedTime, guessedData, rowLimit, decimStep, samples };
+        }
+        onmessage = (e) => {
+          const { taskId, text, timeCol, dataCol, maxRows, maxSamples } = e.data;
+          try {
+            const result = parseCsvSamples(text, timeCol, dataCol, maxRows, maxSamples, taskId);
+            postMessage({ taskId, type: 'done', ...result });
+          } catch (err) {
+            postMessage({ taskId, type: 'error', message: err.message || String(err) });
+          }
+        };
+      `;
+      const blob = new Blob([workerCode], { type: 'application/javascript' });
+      return new Worker(URL.createObjectURL(blob));
+    }
+
+    function parseCsvInWorker({ text, timeCol = null, dataCol = null, maxRows, maxSamples, statusPrefix }) {
+      if (state.worker) state.worker.terminate();
+      state.worker = createCsvWorker();
+      const taskId = ++state.buildSeq;
+      return new Promise((resolve, reject) => {
+        state.worker.onmessage = (e) => {
+          const msg = e.data;
+          if (msg.taskId !== taskId) return;
+          if (msg.type === 'headers') {
+            state.headers = msg.headers;
+            fillColumnSelects(msg.guessedTime, msg.guessedData);
+            setStatus(`${statusPrefix} 识别列完成，${msg.decimStep > 1 ? '抽样步长 ' + msg.decimStep : '未抽样'}`);
+          } else if (msg.type === 'progress') {
+            setStatus(`${statusPrefix} ${msg.pct}%...`);
+          } else if (msg.type === 'done') {
+            state.worker.terminate();
+            state.worker = null;
+            resolve(msg);
+          } else if (msg.type === 'error') {
+            state.worker.terminate();
+            state.worker = null;
+            reject(new Error(msg.message));
+          }
+        };
+        state.worker.onerror = (err) => {
+          if (state.worker) state.worker.terminate();
+          state.worker = null;
+          reject(new Error(err.message || 'Worker error'));
+        };
+        state.worker.postMessage({ taskId, text, timeCol, dataCol, maxRows, maxSamples });
+      });
+    }
+
+    function parseCsv(text) {
+      const lines = text.split(/\r?\n/).filter(l => l.trim().length);
+      if (!lines.length) throw new Error('CSV 是空的');
+      let headerIdx = 0;
+      while (headerIdx < lines.length && splitCsvLine(lines[headerIdx]).length < 2) headerIdx++;
+      const first = splitCsvLine(lines[headerIdx]);
+      const numericCount = first.filter(x => Number.isFinite(parseNumber(x))).length;
+      const hasHeader = numericCount < first.length / 2;
+      const headers = hasHeader ? first : first.map((_, i) => `col${i}`);
+      const dataStart = hasHeader ? headerIdx + 1 : headerIdx;
+      const rows = [];
+      for (let i = dataStart; i < lines.length; i++) {
+        const cols = splitCsvLine(lines[i]);
+        if (cols.length < 2) continue;
+        rows.push(cols);
+      }
+      return { headers, rows };
+    }
+
+    async function readCsvPreview(file, maxRows) {
+      if (file.stream && window.TextDecoder) {
+        const reader = file.stream().getReader();
+        const decoder = new TextDecoder('utf-8');
+        let pending = '';
+        let lines = [];
+        while (lines.length < maxRows + 5) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          pending += decoder.decode(value, { stream: true });
+          const parts = pending.split(/\r?\n/);
+          pending = parts.pop() ?? '';
+          for (const line of parts) {
+            if (line.trim()) lines.push(line);
+            if (lines.length >= maxRows + 5) break;
+          }
+        }
+        if (pending.trim() && lines.length < maxRows + 5) lines.push(pending);
+        try { await reader.cancel(); } catch (_) {}
+        return lines.join('\n');
+      }
+
+      const sliceBytes = Math.min(file.size, 64 * 1024 * 1024);
+      return await file.slice(0, sliceBytes).text();
+    }
+
+    function decimateRows(rows, maxRows) {
+      if (rows.length <= maxRows) return { rows, decimated: false, step: 1 };
+      const step = Math.ceil(rows.length / maxRows);
+      const out = [];
+      for (let i = 0; i < rows.length; i += step) out.push(rows[i]);
+      return { rows: out, decimated: true, step };
+    }
+
+    function guessColumn(headers, rows, kind) {
+      const names = headers.map(h => h.toLowerCase());
+      const timeHints = ['time', 'second', 'sec', '时间', 't'];
+      const voltHints = ['volt', 'ch', 'channel', 'ampl', 'data', '电压', 'v'];
+      const hints = kind === 'time' ? timeHints : voltHints;
+      for (let i = 0; i < names.length; i++) {
+        if (hints.some(h => names[i].includes(h))) return i;
+      }
+      if (kind === 'time') return 0;
+      let best = 1, bestSpan = -Infinity;
+      for (let c = 0; c < headers.length; c++) {
+        const vals = rows.slice(0, 2000).map(r => parseNumber(r[c])).filter(Number.isFinite);
+        if (vals.length < 10) continue;
+        const mm = minMax(vals);
+        const span = mm.max - mm.min;
+        if (span > bestSpan && c !== 0) { bestSpan = span; best = c; }
+      }
+      return best;
+    }
+
+    function minMax(values) {
+      let min = Infinity, max = -Infinity;
+      for (const v of values) {
+        if (!Number.isFinite(v)) continue;
+        if (v < min) min = v;
+        if (v > max) max = v;
+      }
+      return { min, max };
+    }
+
+    async function numericColumnAsync(col, seq, onProgress = null) {
+      if (state.numericCache.has(col)) return state.numericCache.get(col);
+      const rows = state.rows;
+      const arr = new Float64Array(rows.length);
+      const chunk = 2000;
+      for (let i = 0; i < rows.length; i++) {
+        if (seq !== state.buildSeq) return null;
+        arr[i] = parseNumber(rows[i][col]);
+        if (i > 0 && i % chunk === 0) {
+          if (onProgress) onProgress(i, rows.length);
+          await nextFrame();
+        }
+      }
+      if (seq !== state.buildSeq) return null;
+      state.numericCache.set(col, arr);
+      return arr;
+    }
+
+    function fillColumnSelects(timeValue = null, voltValue = null) {
+      const time = $('timeCol'), volt = $('voltCol');
+      time.innerHTML = '';
+      volt.innerHTML = '';
+      state.headers.forEach((h, i) => {
+        const a = new Option(`${i}: ${h}`, i);
+        const b = new Option(`${i}: ${h}`, i);
+        time.add(a);
+        volt.add(b);
+      });
+      time.value = timeValue ?? 0;
+      volt.value = voltValue ?? Math.min(1, Math.max(0, state.headers.length - 1));
+    }
+
+    function buildSamples() {
+      const ti = Number($('timeCol').value);
+      const vi = Number($('voltCol').value);
+      const samples = [];
+      for (const r of state.rows) {
+        const t = parseNumber(r[ti]);
+        const v = parseNumber(r[vi]);
+        if (Number.isFinite(t) && Number.isFinite(v)) samples.push({ t, v });
+      }
+      let sorted = true;
+      for (let i = 1; i < samples.length; i++) {
+        if (samples[i].t < samples[i - 1].t) { sorted = false; break; }
+      }
+      if (!sorted) samples.sort((a, b) => a.t - b.t);
+      state.samples = samples;
+      return samples;
+    }
+
+    function nextFrame() {
+      return new Promise(resolve => requestAnimationFrame(resolve));
+    }
+
+    async function buildSamplesAsync(seq, onProgress = null) {
+      const ti = Number($('timeCol').value);
+      const vi = Number($('voltCol').value);
+      const tCol = await numericColumnAsync(ti, seq, (done, total) => {
+        if (onProgress) onProgress(done, total, 'time');
+      });
+      if (!tCol) return null;
+      const vCol = await numericColumnAsync(vi, seq, (done, total) => {
+        if (onProgress) onProgress(done, total, 'data');
+      });
+      if (!vCol) return null;
+      const samples = [];
+      const rows = state.rows;
+      const chunk = 4000;
+      let lastT = -Infinity;
+      let sorted = true;
+      for (let i = 0; i < rows.length; i++) {
+        if (seq !== state.buildSeq) return null;
+        const t = tCol[i];
+        const v = vCol[i];
+        if (Number.isFinite(t) && Number.isFinite(v)) {
+          if (t < lastT) sorted = false;
+          lastT = t;
+          samples.push({ t, v });
+        }
+        if (i > 0 && i % chunk === 0) {
+          if (onProgress) onProgress(i, rows.length);
+          await nextFrame();
+        }
+      }
+      if (seq !== state.buildSeq) return null;
+      if (!sorted) {
+        setStatus(`时间列乱序，排序 ${samples.length.toLocaleString()} samples...`);
+        await nextFrame();
+        samples.sort((a, b) => a.t - b.t);
+      }
+      if (seq !== state.buildSeq) return null;
+      state.samples = samples;
+      return samples;
+    }
+
+    function rebuildSamplesPreview() {
+      if (!state.rows.length) return;
+      setStatus('列已切换，重建预览中...');
+      drawPlot();
+      clearTimeout(state.columnChangeTimer);
+      const seq = ++state.buildSeq;
+      state.columnChangeTimer = setTimeout(async () => {
+        try {
+          const samples = await buildSamplesAsync(seq, (done, total, stage = 'samples') => {
+            setStatus(`解析 ${stage} ${Math.round(done / total * 100)}%...`);
+          });
+          if (!samples) return;
+          state.result = null;
+          state.plotRangeOverride = null;
+          drawPlot();
+          renderTab();
+          $('mSamples').textContent = state.samples.length.toLocaleString();
+          $('mDuration').textContent = state.samples.length > 1 ? fmtTime(state.samples.at(-1).t - state.samples[0].t) : '-';
+          $('mThreshold').textContent = '-';
+          $('mUI').textContent = '-';
+          $('mBits').textContent = '-';
+          $('mCheck').textContent = '-';
+          setStatus(`预览已更新 ${state.samples.length.toLocaleString()} samples`, 'pass');
+        } catch (err) {
+          setStatus('列切换失败', 'fail');
+          alert(err.message);
+        }
+      }, 80);
+    }
+
+    function markColumnsChanged() {
+      clearTimeout(state.columnChangeTimer);
+      state.buildSeq++;
+      if (state.worker) {
+        state.worker.terminate();
+        state.worker = null;
+      }
+      state.plotRangeOverride = null;
+      state.columnsDirty = true;
+      drawPlot();
+      setStatus('列已切换，点击“重新解析”或“解码”应用', 'warn');
+    }
+
+    function applyWorkerResult(result) {
+      state.headers = result.headers;
+      state.rows = [];
+      state.numericCache = new Map();
+      state.samples = result.samples || [];
+      fillColumnSelects(result.guessedTime, result.guessedData);
+      state.result = null;
+      state.plotRangeOverride = null;
+      state.columnsDirty = false;
+      drawPlot();
+      renderTab();
+      $('mSamples').textContent = state.samples.length.toLocaleString();
+      $('mDuration').textContent = state.samples.length > 1 ? fmtTime(state.samples.at(-1).t - state.samples[0].t) : '-';
+      $('mThreshold').textContent = '-';
+      $('mUI').textContent = '-';
+      $('mBits').textContent = '-';
+      $('mCheck').textContent = '-';
+    }
+
+    function percentile(values, p) {
+      if (!values.length) return NaN;
+      const a = values.slice().sort((x, y) => x - y);
+      const idx = Math.min(a.length - 1, Math.max(0, Math.floor((a.length - 1) * p)));
+      return a[idx];
+    }
+
+    function getThreshold(samples) {
+      if ($('thresholdMode').value === 'manual') return Number($('threshold').value);
+      const vals = samples.map(s => s.v);
+      const lo = percentile(vals, 0.05);
+      const hi = percentile(vals, 0.95);
+      const th = (lo + hi) / 2;
+      $('threshold').value = nice(th, 6);
+      return th;
+    }
+
+    function binaryAt(v, th) {
+      let b = v >= th ? 1 : 0;
+      if ($('invert').checked) b ^= 1;
+      return b;
+    }
+
+    function findEdges(samples, th) {
+      const edges = [];
+      if (samples.length < 2) return edges;
+      let prev = binaryAt(samples[0].v, th);
+      for (let i = 1; i < samples.length; i++) {
+        const cur = binaryAt(samples[i].v, th);
+        if (cur !== prev) {
+          const a = samples[i - 1], b = samples[i];
+          const dv = b.v - a.v;
+          let frac = Math.abs(dv) > 1e-30 ? (th - a.v) / dv : 0.5;
+          frac = Math.max(0, Math.min(1, frac));
+          edges.push({ t: a.t + frac * (b.t - a.t), from: prev, to: cur });
+          prev = cur;
+        }
+      }
+      return edges;
+    }
+
+    function median(arr) {
+      if (!arr.length) return NaN;
+      const a = arr.slice().sort((x, y) => x - y);
+      const m = Math.floor(a.length / 2);
+      return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+    }
+
+    function estimateUi(edges) {
+      if (edges.length < 2) return NaN;
+      const d = [];
+      for (let i = 1; i < edges.length; i++) {
+        const x = edges[i].t - edges[i - 1].t;
+        if (x > 0) d.push(x);
+      }
+      if (!d.length) return NaN;
+      return percentile(d, 0.2);
+    }
+
+    function estimateUiRobust(edges) {
+      if (edges.length < 3) return { ui: NaN, confidence: 0, detail: 'edge 数不足' };
+      const intervals = [];
+      for (let i = 1; i < edges.length; i++) {
+        const dt = edges[i].t - edges[i - 1].t;
+        if (dt > 0) intervals.push(dt);
+      }
+      if (intervals.length < 2) return { ui: NaN, confidence: 0, detail: 'edge interval 不足' };
+      intervals.sort((a, b) => a - b);
+      const lo = percentile(intervals, 0.02);
+      const hi = percentile(intervals, 0.35);
+      const seeds = [];
+      for (const x of intervals) {
+        if (x >= lo && x <= hi) seeds.push(x);
+        if (seeds.length >= 80) break;
+      }
+      if (!seeds.length) seeds.push(percentile(intervals, 0.1));
+
+      let best = { ui: NaN, score: Infinity, confidence: 0 };
+      for (const seed of seeds) {
+        for (let scale = 0.75; scale <= 1.25; scale += 0.01) {
+          const ui = seed * scale;
+          if (!(ui > 0)) continue;
+          let err = 0, used = 0;
+          for (const dt of intervals) {
+            const n = Math.max(1, Math.round(dt / ui));
+            if (n > 64) continue;
+            const rel = Math.abs(dt / (n * ui) - 1);
+            err += Math.min(rel, 0.5);
+            used++;
+          }
+          if (!used) continue;
+          const score = err / used;
+          if (score < best.score) {
+            best = { ui, score, confidence: Math.max(0, Math.min(1, 1 - score * 20)) };
+          }
+        }
+      }
+      const rate = Number.isFinite(best.ui) && best.ui > 0 ? 1 / best.ui : NaN;
+      return {
+        ui: best.ui,
+        confidence: best.confidence,
+        detail: Number.isFinite(rate) ? `${fmtRate(rate)}, UI ${fmtTime(best.ui)}, score ${nice(best.score, 3)}, confidence ${nice(best.confidence * 100, 3)}%` : '无法估计'
+      };
+    }
+
+    function writeManualRateFromUi(ui) {
+      if (!Number.isFinite(ui) || ui <= 0) return;
+      const hz = 1 / ui;
+      if (hz >= 1e9) {
+        $('rateUnit').value = 'Gbps';
+        $('dataRate').value = nice(hz / 1e9, 7);
+      } else if (hz >= 1e6) {
+        $('rateUnit').value = 'Mbps';
+        $('dataRate').value = nice(hz / 1e6, 7);
+      } else {
+        $('rateUnit').value = 'Hz';
+        $('dataRate').value = nice(hz, 7);
+      }
+      $('rateMode').value = 'manual';
+      $('dataRate').disabled = false;
+    }
+
+    function manualUi() {
+      const rate = Number($('dataRate').value);
+      const unit = $('rateUnit').value;
+      if (!rate || rate <= 0) return NaN;
+      const hz = unit === 'Gbps' ? rate * 1e9 : unit === 'Mbps' ? rate * 1e6 : rate;
+      return 1 / hz;
+    }
+
+    function sampleValue(samples, t) {
+      if (!samples.length) return NaN;
+      let lo = 0, hi = samples.length - 1;
+      if (t <= samples[0].t) return samples[0].v;
+      if (t >= samples[hi].t) return samples[hi].v;
+      while (hi - lo > 1) {
+        const m = (lo + hi) >> 1;
+        if (samples[m].t <= t) lo = m; else hi = m;
+      }
+      const a = samples[lo], b = samples[hi];
+      const f = (t - a.t) / (b.t - a.t);
+      return a.v + f * (b.v - a.v);
+    }
+
+    function decodeBits(samples, th, ui, edges, opts = {}) {
+      const phase = Number.isFinite(opts.phase) ? opts.phase : Number($('samplePhase').value);
+      const skip = Math.max(0, Number($('skipBits').value) || 0);
+      const startBase = Number.isFinite(opts.startBase) ? opts.startBase : (edges.length ? edges[0].t : samples[0].t);
+      const start = startBase + phase * ui;
+      const end = samples[samples.length - 1].t;
+      const maxBits = Math.max(0, Number(opts.maxBits) || 0);
+      const bits = [];
+      const times = [];
+      for (let n = skip; ; n++) {
+        const t = start + n * ui;
+        if (t > end) break;
+        bits.push(binaryAt(sampleValue(samples, t), th));
+        times.push(t);
+        if (maxBits && bits.length >= maxBits) break;
+      }
+      return { bits, times, start };
+    }
+
+    function wordsFromBits(bits) {
+      const n = Math.max(1, Number($('wordBits').value) || 8);
+      const maxWords = Math.max(16, Number($('maxWords').value) || 256);
+      const words = [];
+      for (let i = 0; i + n <= bits.length && words.length < maxWords; i += n) {
+        const chunk = bits.slice(i, i + n);
+        let val = 0;
+        for (let k = 0; k < chunk.length; k++) val |= chunk[k] << k;
+        words.push({ index: words.length, bitStart: i, bits: chunk.join(''), value: val, hex: '0x' + val.toString(16).toUpperCase().padStart(Math.ceil(n / 4), '0') });
+      }
+      return words;
+    }
+
+    const CHPI_RULES = {
+      source: 'TV CHPI2.01 Source Driver规格书_20230727 for Eswin - to hi-image.pdf, extracted sections 7.2.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.12, 12',
+      packetBits: 10,
+      dataRateGbps: { min: 1.0, max: 3.7 },
+      uiNs: { min: 0.27, max: 1.0 },
+      eyeWidthUiMin: 0.25,
+      lspPackets: 40,
+      lspDataBytes: ['EA', 'EB', 'EC', 'ED'],
+      minLspSequences: 5,
+      lspMinTimeUs: 1,
+      kCodes: ['K1', 'K2', 'K3', 'K4'],
+      kCodeSequences: {
+        K1: ["K1'", "G1'", "G1'", "K1'"],
+        K2: ["K2'", "G2'", "G2'", "K2'"],
+        K3: ["K3'", "G3'", "G3'", "K3'"],
+        K4: ["K4'", "G4'", "G4'", "K4'"]
+      },
+      kCodePatterns: {
+        K1: [
+          { type: 'type1', bits: '0111111010101010100010101010001000000101' },
+          { type: 'type2', bits: '1000000101010101011101010101110111111010' }
+        ],
+        K2: [
+          { type: 'type1', bits: '0111111011010001111101000111110111111011' },
+          { type: 'type2', bits: '1000000100101110000010111000001000000100' }
+        ],
+        K3: [
+          { type: 'type1', bits: '0111111001011000111101100011110111111001' },
+          { type: 'type2', bits: '1000000110100111000010011100001000000110' }
+        ],
+        K4: [
+          { type: 'type1', bits: '0111111000100011100010001110000111111000' },
+          { type: 'type2', bits: '1000000111011100011101110001110111111100' }
+        ]
+      },
+      coding: {
+        ctrlL: '8B/10B, no SCR',
+        ctrlF: '8B/10B, no SCR',
+        idle: '8B/10B + SCR',
+        lsp: 'payload 8B/10B, no SCR; K2/K3 no 8B/10B',
+        displayData: '8B/10B + SCR',
+        kcode: 'no 8B/10B, no SCR'
+      },
+      scrambler: 'G24(X)=X^24 + X^4 + X^3 + X + 1; SCR enable takes effect after next K3; LFSR reset by K3; K3 may replace K2 at least every frame',
+      ctrlLBytes: 5,
+      ctrlFBytes: 32
+    };
+
+    const CTRL_L_FIELDS = [
+      { byte: 0, bit: 0, name: 'FSYNC', reg: 'CTRL_L.Byte0[0]' },
+      { byte: 0, bit: 1, name: 'POL', reg: 'CTRL_L.Byte0[1]' },
+      { byte: 0, bit: 2, name: 'POLC', reg: 'CTRL_L.Byte0[2]' },
+      { byte: 0, bit: 3, name: 'Reserved', reg: 'CTRL_L.Byte0[3]' },
+      { byte: 0, bit: 4, name: 'H4INV', reg: 'CTRL_L.Byte0[4]' },
+      { byte: 0, bit: 5, name: 'Reserved', reg: 'CTRL_L.Byte0[5]' },
+      { byte: 0, bit: 6, name: 'Reserved', reg: 'CTRL_L.Byte0[6]' },
+      { byte: 0, bit: 7, name: 'Reserved', reg: 'CTRL_L.Byte0[7]' },
+      ...Array.from({ length: 8 }, (_, bit) => ({ byte: 1, bit, name: `LD_R[${bit}]`, reg: `CTRL_L.Byte1[${bit}]` })),
+      ...Array.from({ length: 8 }, (_, bit) => ({ byte: 2, bit, name: `LD_W[${bit}]`, reg: `CTRL_L.Byte2[${bit}]` })),
+      { byte: 3, bit: 0, name: 'CS0', reg: 'CTRL_L.Byte3[0]' },
+      { byte: 3, bit: 1, name: 'CS1', reg: 'CTRL_L.Byte3[1]' },
+      { byte: 3, bit: 2, name: 'BKDU', reg: 'CTRL_L.Byte3[2]' },
+      { byte: 3, bit: 3, name: 'LD_F', reg: 'CTRL_L.Byte3[3]' },
+      { byte: 3, bit: 4, name: 'LOAD[0]', reg: 'CTRL_L.Byte3[4]' },
+      { byte: 3, bit: 5, name: 'LOAD[1]', reg: 'CTRL_L.Byte3[5]' },
+      { byte: 3, bit: 6, name: 'POL2', reg: 'CTRL_L.Byte3[6]' },
+      { byte: 3, bit: 7, name: 'Reserved', reg: 'CTRL_L.Byte3[7]' },
+      ...Array.from({ length: 8 }, (_, bit) => ({ byte: 4, bit, name: 'Reserved', reg: `CTRL_L.Byte4[${bit}]` }))
+    ];
+
+    const CTRL_F_KNOWN_FIELDS = [
+      { byte: 0, bit: 0, name: 'LC', reg: 'CTRL_F.Byte0[0]' },
+      { byte: 0, bit: 1, name: 'Reserved', reg: 'CTRL_F.Byte0[1]' },
+      { byte: 0, bit: 2, name: 'Reserved', reg: 'CTRL_F.Byte0[2]' },
+      { byte: 0, bit: 3, name: 'Reserved', reg: 'CTRL_F.Byte0[3]' },
+      { byte: 0, bit: 4, name: 'SCREN', reg: 'CTRL_F.Byte0[4]' },
+      { byte: 0, bit: 5, name: 'Reserved', reg: 'CTRL_F.Byte0[5]' },
+      { byte: 0, bit: 6, name: 'Reserved', reg: 'CTRL_F.Byte0[6]' },
+      { byte: 0, bit: 7, name: 'Reserved', reg: 'CTRL_F.Byte0[7]' },
+      { byte: 1, bit: 5, name: 'PORSD', reg: 'CTRL_F.Byte1[5]' },
+      { byte: 4, bit: 0, name: 'EQ_DC_L1[0]', reg: 'CTRL_F.Byte4[0]' },
+      { byte: 4, bit: 1, name: 'EQ_DC_L1[1]', reg: 'CTRL_F.Byte4[1]' },
+      { byte: 4, bit: 2, name: 'EQ_DC_L1[2]', reg: 'CTRL_F.Byte4[2]' },
+      { byte: 4, bit: 3, name: 'SD_CHOP', reg: 'CTRL_F.Byte4[3]' }
+    ];
+
+    const EIGHTB_TENB_5B6B = {
+      0:['100111','011000'], 1:['011101','100010'], 2:['101101','010010'], 3:['110001','110001'],
+      4:['110101','001010'], 5:['101001','101001'], 6:['011001','011001'], 7:['111000','000111'],
+      8:['111001','000110'], 9:['100101','100101'], 10:['010101','010101'], 11:['110100','110100'],
+      12:['001101','001101'], 13:['101100','101100'], 14:['011100','011100'], 15:['010111','101000'],
+      16:['011011','100100'], 17:['100011','100011'], 18:['010011','010011'], 19:['110010','110010'],
+      20:['001011','001011'], 21:['101010','101010'], 22:['011010','011010'], 23:['111010','000101'],
+      24:['110011','001100'], 25:['100110','100110'], 26:['010110','010110'], 27:['110110','001001'],
+      28:['001110','001110'], 29:['101110','010001'], 30:['011110','100001'], 31:['101011','010100']
+    };
+
+    const EIGHTB_TENB_3B4B = {
+      0:['1011','0100'], 1:['1001','1001'], 2:['0101','0101'], 3:['1100','0011'],
+      4:['1101','0010'], 5:['1010','1010'], 6:['0110','0110'], 7:['1110','0001']
+    };
+
+    function build8b10bDecodeMap() {
+      const map = new Map();
+      function add(code, byte) {
+        if (!map.has(code)) map.set(code, []);
+        if (!map.get(code).includes(byte)) map.get(code).push(byte);
+      }
+      for (let byte = 0; byte < 256; byte++) {
+        const x = byte & 31;
+        const y = (byte >> 5) & 7;
+        for (const six of EIGHTB_TENB_5B6B[x]) {
+          for (const four of EIGHTB_TENB_3B4B[y]) {
+            add(six + four, byte);
+          }
+        }
+      }
+      // Alternate D.x.7 forms commonly used for running-disparity control.
+      const alt7 = {
+        17: ['1000110111', '1000111000'],
+        18: ['0100110111', '0100111000'],
+        20: ['0010110111', '0010111000']
+      };
+      for (const [xText, codes] of Object.entries(alt7)) {
+        const byte = (7 << 5) | Number(xText);
+        for (const code of codes) add(code, byte);
+      }
+      return map;
+    }
+
+    const USER_8B10B_TABLE_TEXT = `
+00 0001100010 1110011101
+30 0010001010 1101110101
+01 1110011011 0001100100
+31 1101110011 0010001100
+02 0000100010 1111011101
+32 0010101010 1101010101
+03 1110111101 0001000010
+33 1100110101 0011001010
+04 0000100100 1111011011
+34 0010101100 1101010011
+05 1110111011 0001000100
+35 1100110011 0011001100
+06 0000100110 1111011001
+36 0010101110 1101010001
+07 1110111001 0001000110
+37 1100110001 0011001110
+08 1110011100 0001100011
+38 1101110100 0010001011
+09 1110011010 0001100101
+39 1101110010 0010001101
+0a 1111011100 0000100011
+3a 1101010100 0010101011
+0b 1110111100 0001000011
+3b 1100110100 0011001011
+0c 1111011010 0000100101
+3c 1101010010 0010101101
+0d 1110111010 0001000101
+3d 1100110010 0011001101
+0e 1111011110 0000100001
+3e 1101010110 0010101001
+0f 1110111110 0001000001
+3f 1100110110 0011001001
+10 0010000010 1101111101
+40 0001110010 1110001101
+11 1101111011 0010000100
+41 1110001011 0001110100
+12 0010100010 1101011101
+42 0000110010 1111001101
+13 1100111101 0011000010
+43 1110101101 0001010010
+14 0010100100 1101011011
+44 0000110100 1111001011
+15 1100111011 0011000100
+45 1110101011 0001010100
+16 0010100110 1101011001
+46 0000110110 1111001001
+17 1100111001 0011000110
+47 1110101001 0001010110
+18 1101111100 0010000011
+48 1110001100 0001110011
+19 1101111010 0010000101
+49 1110001010 0001110101
+1a 1101011100 0010100011
+4a 1111001100 0000110011
+1b 1100111100 0011000011
+4b 1110101100 0001010011
+1c 1101011010 0010100101
+4c 1111001010 0000110101
+1d 1100111010 0011000101
+4d 1110101010 0001010101
+1e 1101011110 0010100001
+4e 1111001110 0000110001
+1f 1100111110 0011000001
+4f 1110101110 0001010001
+20 0001101010 1110010101
+50 0010010010 1101101101
+21 1110010011 0001101100
+51 1101101011 0010010100
+22 0000101010 1111010101
+52 0010110010 1101001101
+23 1110110101 0001001010
+53 1100101101 0011010010
+24 0000101100 1111010011
+54 0010110100 1101001011
+25 1110110011 0001001100
+55 1100101011 0011010100
+26 0000101110 1111010001
+56 0010110110 1101001001
+27 1110110001 0001001110
+57 1100101001 0011010110
+28 1110010100 0001101011
+58 1101101100 0010010011
+29 1110010010 0001101101
+59 1101101010 0010010101
+2a 1111010100 0000101011
+5a 1101001100 0010110011
+2b 1110110100 0001001011
+5b 1100101100 0011010011
+2c 1111010010 0000101101
+5c 1101001010 0010110101
+2d 1110110010 0001001101
+5d 1100101010 0011010101
+2e 1111010110 0000101001
+5e 1101001110 0010110001
+2f 1110110110 0001001001
+5f 1100101110 0011010001
+60 0001111010 1110000101
+90 0110000010 1001111101
+61 1110000011 0001111100
+91 1001111011 0110000100
+62 0000111010 1111000101
+92 0110100010 1001011101
+63 1110100101 0001011010
+93 1000111101 0111000010
+64 0000111100 1111000011
+94 0110100100 1001011011
+65 1110100011 0001011100
+95 1000111011 0111000100
+66 0000111110 1111000001
+96 0110100110 1001011001
+67 1110100001 0001011110
+97 1000111001 0111000110
+68 1110000100 0001111011
+98 1001111100 0110000011
+69 1110000010 0001111101
+99 1001111010 0110000101
+6a 1111000100 0000111011
+9a 1001011100 0110100011
+6b 1110100100 0001011011
+9b 1000111100 0111000011
+6c 1111000010 0000111101
+9c 1001011010 0110100101
+6d 1110100010 0001011101
+9d 1000111010 0111000101
+6e 1111000110 0000111001
+9e 1001011110 0110100001
+6f 1110100110 0001011001
+9f 1000111110 0111000001
+70 0010011010 1101100101
+a0 0101101010 1010010101
+71 1101100011 0010011100
+a1 1010010011 0101101100
+72 0010111010 1101000101
+a2 0100101010 1011010101
+73 1100100101 0011011010
+a3 1010110101 0101001010
+74 0010111100 1101000011
+a4 0100101100 1011010011
+75 1100100011 0011011100
+a5 1010110011 0101001100
+76 0010111110 1101000001
+a6 0100101110 1011010001
+77 1100100001 0011011110
+a7 1010110001 0101001110
+78 1101100100 0010011011
+a8 1010010100 0101101011
+79 1101100010 0010011101
+a9 1010010010 0101101101
+7a 1101000100 0010111011
+aa 1011010100 0100101011
+7b 1100100100 0011011011
+ab 1010110100 0101001011
+7c 1101000010 0010111101
+ac 1011010010 0100101101
+7d 1100100010 0011011101
+ad 1010110010 0101001101
+7e 1101000110 0010111001
+ae 1011010110 0100101001
+7f 1100100110 0011011001
+af 1010110110 0101001001
+80 0101100010 1010011101
+b0 0110001010 1001110101
+81 1010011011 0101100100
+b1 1001110011 0110001100
+82 0100100010 1011011101
+b2 0110101010 1001010101
+83 1010111101 0101000010
+b3 1000110101 0111001010
+84 0100100100 1011011011
+b4 0110101100 1001010011
+85 1010111011 0101000100
+b5 1000110011 0111001100
+86 0100100110 1011011001
+b6 0110101110 1001010001
+87 1010111001 0101000110
+b7 1000110001 0111001110
+88 1010011100 0101100011
+b8 1001110100 0110001011
+89 1010011010 0101100101
+b9 1001110010 0110001101
+8a 1011011100 0100100011
+ba 1001010100 0110101011
+8b 1010111100 0101000011
+bb 1000110100 0111001011
+8c 1011011010 0100100101
+bc 1001010010 0110101101
+8d 1010111010 0101000101
+bd 1000110010 0111001101
+8e 1011011110 0100100001
+be 1001010110 0110101001
+8f 1010111110 0101000001
+bf 1000110110 0111001001
+c0 0101110010 1010001101
+e0 0101111010 1010000101
+c1 1010001011 0101110100
+e1 1010000011 0101111100
+c2 0100110010 1011001101
+e2 0100111010 1011000101
+c3 1010101101 0101010010
+e3 1010100101 0101011010
+c4 0100110100 1011001011
+e4 0100111100 1011000011
+c5 1010101011 0101010100
+e5 1010100011 0101011100
+c6 0100110110 1011001001
+e6 0100111110 1011000001
+c7 1010101001 0101010110
+e7 1010100001 0101011110
+c8 1010001100 0101110011
+e8 1010000100 0101111011
+c9 1010001010 0101110101
+e9 1010000010 0101111101
+ca 1011001100 0100110011
+ea 1011000100 0100111011
+cb 1010101100 0101010011
+eb 1010100100 0101011011
+cc 1011001010 0100110101
+ec 1011000010 0100111101
+cd 1010101010 0101010101
+ed 1010100010 0101011101
+ce 1011001110 0100110001
+ee 1011000110 0100111001
+cf 1010101110 0101010001
+ef 1010100110 0101011001
+d0 0110010010 1001101101
+f0 0110011010 1001100101
+d1 1001101011 0110010100
+f1 1001100011 0110011100
+d2 0110110010 1001001101
+f2 0110111010 1001000101
+d3 1000101101 0111010010
+f3 1000100101 0111011010
+d4 0110110100 1001001011
+f4 0110111100 1001000011
+d5 1000101011 0111010100
+f5 1000100011 0111011100
+d6 0110110110 1001001001
+f6 0110111110 1001000001
+d7 1000101001 0111010110
+f7 1000100001 0111011110
+d8 1001101100 0110010011
+f8 1001100100 0110011011
+d9 1001101010 0110010101
+f9 1001100010 0110011101
+da 1001001100 0110110011
+fa 1001000100 0110111011
+db 1000101100 0111010011
+fb 1000100100 0111011011
+dc 1001001010 0110110101
+fc 1001000010 0110111101
+dd 1000101010 0111010101
+fd 1000100010 0111011101
+de 1001001110 0110110001
+fe 1001000110 0110111001
+df 1000101110 0111010001
+ff 1000100110 0111011001
+`.trim();
+
+    function parseCustom8b10bTable() {
+      const overrideText = String($('custom8b10bTable')?.value || '').trim();
+      const text = overrideText || USER_8B10B_TABLE_TEXT;
+      if (state.custom8b10bCache.text === text && state.custom8b10bCache.map) return state.custom8b10bCache.map;
+      const map = new Map();
+      for (const line of text.split(/\r?\n/)) {
+        const parts = line.trim().match(/[01]{10}|[0-9a-fA-F]{1,2}/g) || [];
+        if (parts.length < 3) continue;
+        const din = parseInt(parts[0], 16);
+        if (!Number.isFinite(din) || din < 0 || din > 255) continue;
+        const codes = parts.filter(p => /^[01]{10}$/.test(p)).slice(0, 2);
+        for (const code of codes) {
+          if (!map.has(code)) map.set(code, []);
+          if (!map.get(code).includes(din)) map.get(code).push(din);
+        }
+      }
+      state.custom8b10bCache = { text, map };
+      return map;
+    }
+
+    function isUsingBuiltIn8b10bTable() {
+      return !String($('custom8b10bTable')?.value || '').trim();
+    }
+
+    function active8b10bDecodeMap() {
+      const custom = parseCustom8b10bTable();
+      return custom;
+    }
+
+    function decode10bToByte(packetBits) {
+      const raw = String(packetBits || '');
+      const decodeMap = active8b10bDecodeMap();
+      const lsbFirstToTableOrder = reverseBits(raw);
+      const vals = decodeMap.get(lsbFirstToTableOrder);
+      if (vals?.length) return { ok: true, byte: vals[0], order: 'LSB-first fixed', bits: lsbFirstToTableOrder, ambiguous: vals.length > 1 };
+      const reason = decodeMap.size ? `table-order:${lsbFirstToTableOrder}` : `no 8b10b table; table-order:${lsbFirstToTableOrder}`;
+      return { ok: false, byte: NaN, order: 'LSB-first fixed', bits: raw, ambiguous: false, tried: reason };
+    }
+
+    function getFieldDefs(kind, byteCount) {
+      if (kind === 'CTRL_L') return CTRL_L_FIELDS;
+      const known = new Map(CTRL_F_KNOWN_FIELDS.map(f => [`${f.byte}.${f.bit}`, f]));
+      const fields = [];
+      for (let byte = 0; byte < byteCount; byte++) {
+        for (let bit = 0; bit < 8; bit++) {
+          fields.push(known.get(`${byte}.${bit}`) || { byte, bit, name: 'Unknown/Reserved', reg: `CTRL_F.Byte${byte}[${bit}]` });
+        }
+      }
+      return fields;
+    }
+
+    function extractCtrlBlocks(bits) {
+      const bitStr = bits.join('');
+      const blocks = [];
+      const resolved = collectResolvedKMatches(bitStr, Infinity);
+      for (const hit of resolved) {
+        if (hit.name === 'K1') blocks.push(buildCtrlBlock('CTRL_L', hit.pos, hit.bitLen, bits, hit));
+        if (hit.name === 'K4') blocks.push(buildCtrlBlock('CTRL_F', hit.pos, hit.bitLen, bits, hit));
+      }
+      return blocks.filter(Boolean).sort((a, b) => a.bitStart - b.bitStart);
+    }
+
+    function buildCtrlBlock(kind, kBitStart, kLen, bits, kMatch = null) {
+      const byteCount = kind === 'CTRL_L' ? CHPI_RULES.ctrlLBytes : CHPI_RULES.ctrlFBytes;
+      const tokenBits = CHPI_RULES.packetBits;
+      const dataStart = kBitStart + kLen;
+      if (dataStart + byteCount * tokenBits > bits.length) return null;
+      const packets = [];
+      const bytes = [];
+      for (let i = 0; i < byteCount; i++) {
+        const bitStart = dataStart + i * tokenBits;
+        const raw10 = bits.slice(bitStart, bitStart + tokenBits).join('');
+        const dec = decode10bToByte(raw10);
+        packets.push({ index: i, bitStart, raw10, ...dec });
+        bytes.push(dec.ok ? dec.byte : null);
+      }
+      const fields = getFieldDefs(kind, byteCount).map(f => ({
+        ...f,
+        bitStart: packets[f.byte]?.bitStart + Math.min(f.bit, tokenBits - 1),
+        packetBitStart: packets[f.byte]?.bitStart,
+        value: Number.isInteger(bytes[f.byte]) ? ((bytes[f.byte] >> f.bit) & 1) : null
+      }));
+      return { kind, kBitStart, kMismatch: kMatch?.mismatch || 0, kExact: kMatch?.exact !== false, bitStart: dataStart, byteCount, packets, bytes, fields };
+    }
+
+    function findPatternPositions(bitStr, pattern, maxHits = 20) {
+      const hits = [];
+      let pos = bitStr.indexOf(pattern);
+      while (pos >= 0 && hits.length < maxHits) {
+        hits.push(pos);
+        pos = bitStr.indexOf(pattern, pos + 1);
+      }
+      return hits;
+    }
+
+    function getKFuzzyMismatch() {
+      const v = Number($('chpiKFuzzy')?.value);
+      if (!Number.isFinite(v)) return 1;
+      return Math.max(0, Math.min(4, Math.round(v)));
+    }
+
+    function getKAllowedMismatch(name) {
+      return getKFuzzyMismatch();
+    }
+
+    function hammingAt(bitStr, pos, pattern, maxMismatch = 0) {
+      let mm = 0;
+      for (let k = 0; k < pattern.length; k++) {
+        if (bitStr[pos + k] !== pattern[k] && ++mm > maxMismatch) return mm;
+      }
+      return mm;
+    }
+
+    function collectPatternHits(bitStr, pattern, maxHits = Infinity, maxMismatch = 0) {
+      const hits = [];
+      const plen = pattern.length;
+      if (!bitStr || bitStr.length < plen) return hits;
+      for (let pos = 0; pos <= bitStr.length - plen; pos++) {
+        const mismatch = hammingAt(bitStr, pos, pattern, maxMismatch);
+        if (mismatch <= maxMismatch) {
+          hits.push({ pos, mismatch, exact: mismatch === 0 });
+          if (hits.length >= maxHits) break;
+        }
+      }
+      return hits;
+    }
+
+    function findPatternFuzzy(bitStr, pattern, maxMismatch = 2, maxHits = 20) {
+      const hits = [];
+      const plen = pattern.length;
+      if (!bitStr || bitStr.length < plen) return hits;
+      for (let i = 0; i <= bitStr.length - plen; i++) {
+        let mm = 0;
+        for (let k = 0; k < plen; k++) {
+          if (bitStr[i + k] !== pattern[k] && ++mm > maxMismatch) break;
+        }
+        if (mm <= maxMismatch) {
+          hits.push({ pos: i, mismatch: mm });
+          if (hits.length >= maxHits) break;
+        }
+      }
+      return hits;
+    }
+
+    function nearestPattern(bitStr, pattern, step = 1) {
+      const plen = pattern.length;
+      if (!bitStr || bitStr.length < plen) return null;
+      let best = { pos: -1, mismatch: plen + 1 };
+      for (let i = 0; i <= bitStr.length - plen; i += step) {
+        let mm = 0;
+        for (let k = 0; k < plen; k++) if (bitStr[i + k] !== pattern[k]) mm++;
+        if (mm < best.mismatch) {
+          best = { pos: i, mismatch: mm };
+          if (mm === 0) break;
+        }
+      }
+      return best.pos >= 0 ? best : null;
+    }
+
+    function bitRangeToTimeRange(bitStart, bitLen, times, ui) {
+      if (!times?.length || !Number.isFinite(ui) || ui <= 0) return null;
+      const startIdx = Math.max(0, Math.min(times.length - 1, bitStart));
+      const endIdx = Math.max(startIdx, Math.min(times.length - 1, bitStart + bitLen - 1));
+      return {
+        t0: times[startIdx] - 0.5 * ui,
+        t1: times[endIdx] + 0.5 * ui,
+        bitStart,
+        bitLen
+      };
+    }
+
+    function parseKPatterns(text) {
+      const out = { full: {}, symbol: {} };
+      for (const item of String(text || '').split(/[,\n;]/)) {
+        const full = item.trim().match(/^(K[1-4])\s*=\s*([01]{40})$/i);
+        if (full) {
+          out.full[full[1].toUpperCase()] = full[2];
+          continue;
+        }
+        const symbol = item.trim().match(/^([KG][1-4])(?:P|')?\s*=\s*([01]{10})$/i);
+        if (symbol) out.symbol[symbol[1].toUpperCase()] = symbol[2];
+      }
+      return out;
+    }
+
+    function deriveKBitPattern(name, kPatterns) {
+      if (kPatterns.full[name]) return kPatterns.full[name];
+      const seq = CHPI_RULES.kCodeSequences[name] || [];
+      const parts = [];
+      for (const symbol of seq) {
+        const key = symbol.replace("'", '').toUpperCase();
+        if (!kPatterns.symbol[key]) return null;
+        parts.push(kPatterns.symbol[key]);
+      }
+      return parts.join('');
+    }
+
+    function reverseBits(s) {
+      return String(s).split('').reverse().join('');
+    }
+
+    function getKPatterns(name, kPatterns) {
+      const derived = deriveKBitPattern(name, kPatterns);
+      const base = derived ? [{ type: 'override', bits: derived }] : (CHPI_RULES.kCodePatterns[name] || []);
+      const out = [];
+      for (const p of base) {
+        const wordSerial = reverseBits(p.bits);
+        out.push({ type: `${p.type} whole-word LSB-first`, bits: wordSerial, sourceBits: p.bits, primary: true });
+      }
+      return out;
+    }
+
+    function scanKCodes(bitStr, maxHits = 8) {
+      const kPatterns = parseKPatterns($('chpiKPatterns')?.value || '');
+      const result = {};
+      for (const name of CHPI_RULES.kCodes) {
+        const patterns = getKPatterns(name, kPatterns);
+        result[name] = patterns.map(p => {
+          const matches = collectPatternHits(bitStr, p.bits, maxHits, getKAllowedMismatch(name));
+          const hits = matches.filter(h => h.exact).map(h => h.pos);
+          const fuzzy = matches.filter(h => !h.exact).map(h => ({ pos: h.pos, mismatch: h.mismatch }));
+          const near = nearestPattern(bitStr, p.bits, Math.max(1, CHPI_RULES.packetBits));
+          return { ...p, hits, fuzzy, matches, near };
+        });
+      }
+      return result;
+    }
+
+    function allKSerialPatterns() {
+      const kPatterns = parseKPatterns($('chpiKPatterns')?.value || '');
+      const out = [];
+      for (const name of CHPI_RULES.kCodes) {
+        for (const pattern of getKPatterns(name, kPatterns)) {
+          out.push({ ...pattern, name, bitLen: pattern.bits.length });
+        }
+      }
+      return out;
+    }
+
+    function scoreKSyncBits(bitStr, maxHitsPerPattern = 80) {
+      const patterns = allKSerialPatterns();
+      const maxMismatch = getKFuzzyMismatch();
+      const hits = [];
+      for (const pattern of patterns) {
+        for (const h of collectPatternHits(bitStr, pattern.bits, maxHitsPerPattern, maxMismatch)) {
+          hits.push({ ...h, name: pattern.name, type: pattern.type, bitLen: pattern.bitLen });
+        }
+      }
+      hits.sort((a, b) => a.pos - b.pos || a.mismatch - b.mismatch);
+      const resolved = [];
+      for (const h of hits.sort((a, b) => a.mismatch - b.mismatch || a.pos - b.pos)) {
+        if (!resolved.some(r => rangesOverlap(h.pos, h.pos + h.bitLen, r.pos, r.pos + r.bitLen))) resolved.push(h);
+      }
+      const exact = resolved.filter(h => h.exact).length;
+      const fuzzy = resolved.length - exact;
+      const mismatchSum = resolved.reduce((sum, h) => sum + h.mismatch, 0);
+      const kinds = new Set(resolved.map(h => h.name)).size;
+      return {
+        hits: resolved.sort((a, b) => a.pos - b.pos),
+        exact,
+        fuzzy,
+        mismatchSum,
+        kinds,
+        score: exact * 1000 + fuzzy * 300 + kinds * 80 - mismatchSum * 20
+      };
+    }
+
+    function refineClockByKCodes(samples, th, edges, baseUi) {
+      if (!$('chpiKClockAssist')?.checked || !Number.isFinite(baseUi) || baseUi <= 0) return null;
+      const spanPct = Math.max(0, Math.min(10, Number($('chpiKClockSpan')?.value) || 0));
+      const maxBits = Math.max(1000, Math.min(200000, Number($('chpiKClockBits')?.value) || 12000));
+      const startBase = edges.length ? edges[0].t : samples[0].t;
+      const span = spanPct / 100;
+      const scaleSteps = span > 0 ? 5 : 1;
+      const phaseSteps = 8;
+      let best = null;
+      for (let si = 0; si < scaleSteps; si++) {
+        const frac = scaleSteps === 1 ? 0 : -span + (2 * span * si) / (scaleSteps - 1);
+        const ui = baseUi * (1 + frac);
+        for (let pi = 0; pi < phaseSteps; pi++) {
+          const phase = (pi + 0.5) / phaseSteps;
+          const decoded = decodeBits(samples, th, ui, edges, { phase, startBase, maxBits });
+          if (decoded.bits.length < CHPI_RULES.packetBits * 4) continue;
+          const scored = scoreKSyncBits(decoded.bits.join(''), 80);
+          const score = scored.score - Math.abs(frac) * 15;
+          const candidate = { ui, phase, startBase, decoded, ...scored, score, frac };
+          if (!best || candidate.score > best.score) best = candidate;
+        }
+      }
+      if (!best || best.hits.length === 0) return null;
+      return best;
+    }
+
+    function compareKCandidates(a, b) {
+      if ((a.exact ? 1 : 0) !== (b.exact ? 1 : 0)) return a.exact ? -1 : 1;
+      if (a.mismatch !== b.mismatch) return a.mismatch - b.mismatch;
+      if (!a.exact && !b.exact && ((a.name === 'K2' && b.name === 'K3') || (a.name === 'K3' && b.name === 'K2'))) {
+        return a.name === 'K2' ? -1 : 1;
+      }
+      const order = { K1: 0, K2: 1, K3: 2, K4: 3 };
+      if (order[a.name] !== order[b.name]) return order[a.name] - order[b.name];
+      return a.pos - b.pos;
+    }
+
+    function rangesOverlap(a0, a1, b0, b1) {
+      return a0 < b1 && b0 < a1;
+    }
+
+    function collectResolvedKMatches(bitStr, maxHits = 200) {
+      const scan = scanKCodes(bitStr, maxHits);
+      const kPatterns = parseKPatterns($('chpiKPatterns')?.value || '');
+      const patterns = [];
+      for (const name of CHPI_RULES.kCodes) {
+        for (const pattern of getKPatterns(name, kPatterns)) patterns.push({ ...pattern, name, bitLen: pattern.bits.length });
+      }
+      const candidates = [];
+      const maxMismatch = getKFuzzyMismatch();
+      const plen = patterns[0]?.bitLen || 40;
+      for (let pos = 0; pos <= bitStr.length - plen; pos++) {
+        let best = null;
+        const rejectedHere = [];
+        for (const pattern of patterns) {
+          const mm = hammingAt(bitStr, pos, pattern.bits, maxMismatch);
+          if (mm > maxMismatch) continue;
+          const cand = {
+            name: pattern.name,
+            type: pattern.type,
+            bits: pattern.bits,
+            sourceBits: pattern.sourceBits,
+            primary: pattern.primary,
+            pos,
+            mismatch: mm,
+            exact: mm === 0,
+            bitLen: pattern.bitLen
+          };
+          if (!best || compareKCandidates(cand, best) < 0) {
+            if (best) rejectedHere.push({ ...best, rejectedBy: `${cand.name}@${cand.pos}` });
+            best = cand;
+          } else {
+            rejectedHere.push({ ...cand, rejectedBy: `${best.name}@${best.pos}` });
+          }
+        }
+        if (best) {
+          best.rejectedSameStart = rejectedHere;
+          candidates.push(best);
+        }
+      }
+      const accepted = [];
+      const rejected = candidates.flatMap(c => c.rejectedSameStart || []);
+      for (const cand of candidates.sort(compareKCandidates)) {
+        const conflict = accepted.find(a => rangesOverlap(cand.pos, cand.pos + cand.bitLen, a.pos, a.pos + a.bitLen));
+        if (!conflict) {
+          accepted.push(cand);
+        } else {
+          rejected.push({ ...cand, rejectedBy: `${conflict.name}@${conflict.pos}` });
+        }
+      }
+      accepted.sort((a, b) => a.pos - b.pos || compareKCandidates(a, b));
+      accepted.scan = scan;
+      accepted.rejected = rejected;
+      return accepted;
+    }
+
+    function buildKProbeChecks(bitStr) {
+      const checks = [];
+      const clean = String(bitStr || '').replace(/[^01]/g, '');
+      function add(name, ok, detail, level = null) {
+        checks.push({ name, ok, detail, level: level || (ok ? 'pass' : 'fail') });
+      }
+      add('K-code bit 串长度', clean.length >= 40, `${clean.length} bits`, clean.length >= 40 ? 'pass' : 'warn');
+      if (clean.length < 40) return { checks, summary: 'WARN' };
+
+      const scan = scanKCodes(clean, 50);
+      for (const name of CHPI_RULES.kCodes) {
+        const primary = scan[name].filter(p => p.primary);
+        const primaryHits = primary.flatMap(p => (p.matches || p.hits.map(pos => ({ pos, mismatch: 0, exact: true }))).map(h => `${p.type}@${h.pos}${h.mismatch ? `(mm${h.mismatch})` : ''}`));
+        const best = primary.filter(p => p.near).sort((a, b) => a.near.mismatch - b.near.mismatch)[0];
+        const detail = primaryHits.length
+          ? primaryHits.join(', ')
+          : `no hit${best ? `; nearest ${best.type}@${best.near.pos}, mismatch=${best.near.mismatch}/40, nearBits=${clean.slice(best.near.pos, best.near.pos + 40)}` : ''}`;
+        add(`Probe ${name}`, primaryHits.length > 0, detail, primaryHits.length ? 'pass' : 'warn');
+      }
+      const fail = checks.filter(c => c.level === 'fail').length;
+      const warn = checks.filter(c => c.level === 'warn').length;
+      return { checks, summary: fail ? 'FAIL' : warn ? 'WARN' : 'PASS' };
+    }
+
+    function runKProbeOnly() {
+      const probe = String($('chpiBitProbe')?.value || '').replace(/[^01]/g, '');
+      if (!probe) return false;
+      const checks = buildKProbeChecks(probe);
+      state.result = {
+        samples: [],
+        threshold: NaN,
+        edges: [],
+        ui: NaN,
+        bits: probe.split('').map(Number),
+        times: [],
+        words: [],
+        checks,
+        annotations: [],
+        ctrlBlocks: []
+      };
+      $('mSamples').textContent = '-';
+      $('mDuration').textContent = '-';
+      $('mThreshold').textContent = '-';
+      $('mUI').textContent = '-';
+      $('mBits').textContent = probe.length.toLocaleString();
+      $('mCheck').innerHTML = `<span class="${checks.summary === 'PASS' ? 'pass' : checks.summary === 'WARN' ? 'warn' : 'fail'}">${checks.summary}</span>`;
+      state.activeTab = 'checks';
+      document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x.dataset.tab === 'checks'));
+      renderTab();
+      drawPlot();
+      setStatus(`K-code 自检完成：${checks.summary}`, checks.summary === 'PASS' ? 'pass' : checks.summary === 'WARN' ? 'warn' : 'fail');
+      return true;
+    }
+
+    function checkPacketBoundaryTransitions(bits, tokenBits) {
+      const violations = [];
+      const packetCount = Math.floor(bits.length / tokenBits);
+      for (let i = 0; i < packetCount - 1; i++) {
+        const prevLast = bits[i * tokenBits + tokenBits - 1];
+        const nextFirst = bits[(i + 1) * tokenBits];
+        if (prevLast === nextFirst) {
+          violations.push(i);
+          if (violations.length >= 20) break;
+        }
+      }
+      return { packetCount, violations };
+    }
+
+    function detectChpiAnnotations(bits, times, ui) {
+      const annotations = [];
+      const diagnostics = [];
+      const bitStr = bits.join('');
+      const tokenBits = Math.max(4, Number($('chpiTokenBits')?.value) || CHPI_RULES.packetBits);
+      const styles = {
+        K1: '#1769aa',
+        K2: '#0f8a5f',
+        K3: '#7a4cc2',
+        K4: '#b76b00',
+        CTRL_L: '#0f8a5f',
+        CTRL_F: '#b42318'
+      };
+
+      const resolved = collectResolvedKMatches(bitStr, Infinity);
+      const byName = new Map(CHPI_RULES.kCodes.map(name => [name, 0]));
+      for (const hit of resolved) {
+        byName.set(hit.name, (byName.get(hit.name) || 0) + 1);
+        const kRange = bitRangeToTimeRange(hit.pos, hit.bitLen, times, ui);
+        const mmText = hit.mismatch ? ` mm=${hit.mismatch}/40` : '';
+        if (kRange) annotations.push({ ...kRange, label: `${hit.name} ${hit.type}${mmText}`, color: styles[hit.name], kind: 'kcode', primary: hit.primary, mismatch: hit.mismatch });
+
+        if (hit.name === 'K1') {
+          const ctrlStart = hit.pos + hit.bitLen;
+          const ctrlRange = bitRangeToTimeRange(ctrlStart, CHPI_RULES.ctrlLBytes * tokenBits, times, ui);
+          if (ctrlRange) annotations.push({ ...ctrlRange, label: `CTRL_L${mmText ? ' after fuzzy K1' : ''}`, color: styles.CTRL_L, kind: 'ctrl' });
+        } else if (hit.name === 'K4') {
+          const ctrlStart = hit.pos + hit.bitLen;
+          const ctrlRange = bitRangeToTimeRange(ctrlStart, CHPI_RULES.ctrlFBytes * tokenBits, times, ui);
+          if (ctrlRange) annotations.push({ ...ctrlRange, label: `CTRL_F${mmText ? ' after fuzzy K4' : ''}`, color: styles.CTRL_F, kind: 'ctrl' });
+        }
+      }
+      const scan = resolved.scan || scanKCodes(bitStr, Infinity);
+      for (const name of CHPI_RULES.kCodes) {
+        if (byName.get(name)) continue;
+        const primaryPatterns = (scan[name] || []).filter(p => p.primary);
+        const near = primaryPatterns
+          .filter(p => p.near)
+          .sort((a, b) => a.near.mismatch - b.near.mismatch)[0];
+        diagnostics.push(near ? `${name}: not found after conflict resolve, nearest ${near.type} bit ${near.near.pos}, mismatch ${near.near.mismatch}/40` : `${name}: pattern not found`);
+      }
+      if (resolved.rejected?.length) diagnostics.push(`K conflict resolved: rejected ${resolved.rejected.slice(0, 8).map(x => `${x.name}@${x.pos}(mm${x.mismatch}) by ${x.rejectedBy}`).join(', ')}`);
+      annotations.sort((a, b) => a.t0 - b.t0 || a.label.localeCompare(b.label));
+      annotations.diagnostics = diagnostics;
+      return annotations;
+    }
+
+    function checkChpiRules(bits, words, add) {
+      if (!$('chpiEnable')?.checked) return;
+      const bitStr = bits.join('');
+      const tokenBits = Math.max(4, Number($('chpiTokenBits').value) || 10);
+      const rate = Number.isFinite(state.result?.ui) && state.result.ui > 0 ? 1 / state.result.ui : NaN;
+      add('CHPI 规则来源', true, CHPI_RULES.source, 'pass');
+      add('CHPI packet 宽度', tokenBits === CHPI_RULES.packetBits, `当前=${tokenBits} bit, 文档 packet=10 bit`, tokenBits === 10 ? 'pass' : 'fail');
+
+      if (Number.isFinite(rate)) {
+        const gbps = rate / 1e9;
+        add('CHPI data rate 范围', gbps >= CHPI_RULES.dataRateGbps.min && gbps <= CHPI_RULES.dataRateGbps.max, `${nice(gbps,4)} Gbps, 文档 1~3.7Gbps`);
+        const uiNs = state.result.ui * 1e9;
+        add('CHPI UI 范围', uiNs >= CHPI_RULES.uiNs.min && uiNs <= CHPI_RULES.uiNs.max, `${nice(uiNs,4)} ns, 文档 0.27~1ns`);
+      } else {
+        add('CHPI data rate / UI 范围', false, '无法从当前波形估计 UI', 'warn');
+      }
+
+      const packetCount = Math.floor(bits.length / tokenBits);
+      add('CHPI 10b packet 数', packetCount > 0, `${packetCount} packets from ${bits.length} decoded bits`, packetCount > 0 ? 'pass' : 'warn');
+      if (packetCount > 0) {
+        add('CHPI LSP 40 packets 对齐初筛', packetCount >= CHPI_RULES.lspPackets, `LSP sequence = 40 packets; current capture has ${packetCount} packets`, packetCount >= 40 ? 'pass' : 'warn');
+        const boundary = checkPacketBoundaryTransitions(bits, tokenBits);
+        add('CHPI packet boundary transition', boundary.violations.length === 0, `文档 7.4 要求 packet bit9 与下一个 packet bit0 有跳变；violations=${boundary.violations.length}${boundary.violations.length ? ', first packet index ' + boundary.violations.join(', ') : ''}`, boundary.violations.length ? 'warn' : 'pass');
+      }
+
+      const minLsp = Math.max(0, Number($('chpiMinLsp').value) || CHPI_RULES.minLspSequences);
+      const possibleLsp = Math.floor(packetCount / CHPI_RULES.lspPackets);
+      add('CHPI LSP 最小发送次数', possibleLsp >= minLsp, `文档要求 LSP at least ${minLsp} sequences and at least 1us; 当前最多可容纳 ${possibleLsp} sequences`, possibleLsp >= minLsp ? 'pass' : 'warn');
+
+      const resolvedK = collectResolvedKMatches(bitStr, Infinity);
+      const scan = resolvedK.scan || scanKCodes(bitStr, Infinity);
+      for (const name of CHPI_RULES.kCodes) {
+        const seq = CHPI_RULES.kCodeSequences[name].join(' | ');
+        const patterns = scan[name];
+        const hitTexts = patterns.map(p => {
+          const matches = p.matches || p.hits.map(pos => ({ pos, mismatch: 0, exact: true }));
+          const preview = matches.slice(0, 12);
+          const hitText = preview.length ? '@' + preview.map(x => x.pos + (x.mismatch ? `(mm${x.mismatch})` : '')).join('/') + (matches.length > preview.length ? '/...' : '') : '';
+          return `${p.type}${p.primary ? '' : '*'}:${matches.length}${hitText}`;
+        });
+        const totalHits = patterns.reduce((sum, p) => sum + ((p.matches || p.hits || []).length), 0);
+        const accepted = resolvedK.filter(x => x.name === name);
+        const acceptedText = accepted.length ? `; accepted=${accepted.map(x => `${x.type}@${x.pos}${x.mismatch ? `(mm${x.mismatch})` : ''}`).join('/')}` : '; accepted=0';
+        const primaryNear = patterns.filter(p => p.primary && p.near).sort((a, b) => a.near.mismatch - b.near.mismatch)[0];
+        const nearText = primaryNear ? `; nearest primary=${primaryNear.type}@bit${primaryNear.near.pos}, mismatch=${primaryNear.near.mismatch}/40, nearBits=${bitStr.slice(primaryNear.near.pos, primaryNear.near.pos + 40)}` : '';
+        add(`CHPI ${name} sequence`, accepted.length > 0, `${seq}; rawCandidates=${hitTexts.join(', ')}${acceptedText}${nearText}; allowed mismatch<=${getKAllowedMismatch(name)}; conflict rule=exact/mm/K2-before-K3 tie; fixed LSB-first: compare reversed 40'b[39:0] only`, accepted.length ? 'pass' : (totalHits ? 'warn' : 'warn'));
+      }
+      if (resolvedK.rejected?.length) {
+        add('CHPI K-code 冲突仲裁', true, `rejected=${resolvedK.rejected.slice(0, 12).map(x => `${x.name}@${x.pos}(mm${x.mismatch}) by ${x.rejectedBy}`).join(', ')}`, 'warn');
+      }
+
+      const probe = String($('chpiBitProbe')?.value || '').replace(/[^01]/g, '');
+      if (probe) {
+        const probeScan = scanKCodes(probe, 20);
+        const probeText = CHPI_RULES.kCodes.map(name => {
+          const primary = probeScan[name].filter(p => p.primary);
+          const hits = primary.flatMap(p => (p.matches || p.hits.map(pos => ({ pos, mismatch: 0, exact: true }))).map(h => `${p.type}@${h.pos}${h.mismatch ? `(mm${h.mismatch})` : ''}`));
+          const best = primary.filter(p => p.near).sort((a, b) => a.near.mismatch - b.near.mismatch)[0];
+          return `${name}:${hits.length ? hits.join('/') : 'no hit' + (best ? ` nearest ${best.near.mismatch}/40@${best.near.pos}` : '')}`;
+        }).join('; ');
+        add('CHPI K-code bit 串自检', true, `probeLen=${probe.length}; ${probeText}`, 'pass');
+      }
+
+      add('CHPI 8B/10B 应用关系', true, `K1~K4 本身不参与 8B/10B；CTRL_L=${CHPI_RULES.coding.ctrlL}; CTRL_F=${CHPI_RULES.coding.ctrlF}; IDLE=${CHPI_RULES.coding.idle}; LSP=${CHPI_RULES.coding.lsp}; Display=${CHPI_RULES.coding.displayData}; K-code=${CHPI_RULES.coding.kcode}`, 'pass');
+      add('CHPI K-code 解码路径', true, 'K1~K4 按 40bit 特殊 pattern 直接匹配；匹配到 K1/K4 后，跳过整个 K-code，再对后续 CTRL payload 做 8B/10B 解码', 'pass');
+      add('CHPI CTRL_L 长度', true, `CTRL_L located after K1; ${CHPI_RULES.ctrlLBytes} bytes, no scramble, payload 8B/10B encoded`, 'pass');
+      add('CHPI CTRL_F 长度', true, `CTRL_F located after K4; ${CHPI_RULES.ctrlFBytes} bytes, no scramble, payload 8B/10B encoded; reserved bits should keep default low unless specified`, 'pass');
+
+      if ($('chpiCheck420')?.checked) {
+        const blocks420 = Math.floor(bits.length / 420);
+        const rem420 = bits.length % 420;
+        const blocks413 = Math.floor(bits.length / 413);
+        add('兼容 413/420 编码长度检查', blocks420 > 0, `decoded=${bits.length} bits, 420b blocks=${blocks420}, rem=${rem420}, 413b-equivalent blocks=${blocks413}; 注意：这不是当前 PDF 7.4 的主描述`, blocks420 > 0 ? 'pass' : 'warn');
+      }
+
+      if ($('chpiCheckScramble')?.checked) {
+        add('CHPI SCR/LFSR 规则', true, CHPI_RULES.scrambler + '；CTRL_L/CTRL_F 按你的设计不做 descramble；Display/IDLE descramble 尚未实现', 'warn');
+      }
+
+      add('CHPI 当前未覆盖项', true, 'CTRL_L/CTRL_F 已尝试 8B/10B 解码和字段解包；Display/IDLE G24 descramble 尚未实现；CTRL_F 字段名目前只内置部分已知项', 'warn');
+    }
+
+    function checkRules(samples, edges, ui, bits, words, th) {
+      const checks = [];
+      const duration = samples.at(-1).t - samples[0].t;
+      const rate = Number.isFinite(ui) && ui > 0 ? 1 / ui : NaN;
+      function add(name, ok, detail, level = null) {
+        checks.push({ name, ok, detail, level: level || (ok ? 'pass' : 'fail') });
+      }
+      add('CSV 有效样点', samples.length > 10, `${samples.length} samples`);
+      add('检测到边沿', edges.length > 0, `${edges.length} edges`, edges.length > 0 ? 'pass' : 'warn');
+      add('UI / data rate 可用', Number.isFinite(ui) && ui > 0, Number.isFinite(rate) ? `${fmtRate(rate)} / UI ${fmtTime(ui)}` : '无法估计', Number.isFinite(ui) ? 'pass' : 'fail');
+      add('解码 bit 数', bits.length > 0, `${bits.length} bits in ${fmtTime(duration)}`);
+      const custom8b10b = parseCustom8b10bTable();
+      const tableSource = isUsingBuiltIn8b10bTable() ? '内置 8b10b.xlsx 表' : 'textarea 覆盖表';
+      add('8B/10B decode table', custom8b10b.size > 0, custom8b10b.size ? `使用${tableSource}，${custom8b10b.size} codes` : '未加载 8B/10B 表，CTRL byte 不会解码', custom8b10b.size ? 'pass' : 'fail');
+      if (Number.isFinite(ui) && ui > 0 && duration > 0) {
+        const avgDt = duration / Math.max(1, samples.length - 1);
+        const samplesPerUi = ui / avgDt;
+        add('采样密度', samplesPerUi >= 8, `${nice(samplesPerUi, 4)} samples/UI; 建议 >=8，低于 4 容易边沿变形/漏检`, samplesPerUi >= 8 ? 'pass' : samplesPerUi >= 4 ? 'warn' : 'fail');
+      }
+
+      const maxRun = Number($('maxRun').value) || 0;
+      if (maxRun > 0 && bits.length) {
+        let run = 1, worst = 1;
+        for (let i = 1; i < bits.length; i++) {
+          run = bits[i] === bits[i - 1] ? run + 1 : 1;
+          worst = Math.max(worst, run);
+        }
+        add('最大连续相同比特', worst <= maxRun, `worst=${worst}, limit=${maxRun}`);
+      }
+
+      const minRate = Number($('minRate').value) || 0;
+      const maxRate = Number($('maxRate').value) || 0;
+      const unit = $('rateUnit').value;
+      const scale = unit === 'Gbps' ? 1e9 : unit === 'Mbps' ? 1e6 : 1;
+      if (minRate > 0) add('Data rate 下限', rate >= minRate * scale, `${fmtRate(rate)} >= ${minRate} ${unit}`);
+      if (maxRate > 0) add('Data rate 上限', rate <= maxRate * scale, `${fmtRate(rate)} <= ${maxRate} ${unit}`);
+
+      const bitStr = bits.join('');
+      const patterns = $('patterns').value.split(/[,\s]+/).map(x => x.trim()).filter(Boolean);
+      for (const p of patterns) {
+        add(`包含 pattern ${p}`, bitStr.includes(p), bitStr.includes(p) ? `found at bit ${bitStr.indexOf(p)}` : 'not found');
+      }
+
+      checkChpiRules(bits, words, add);
+
+      const fail = checks.filter(c => c.level === 'fail').length;
+      const warn = checks.filter(c => c.level === 'warn').length;
+      return { checks, summary: fail ? 'FAIL' : warn ? 'WARN' : 'PASS' };
+    }
+
+    async function decode() {
+      if (!state.samples.length && !state.rawText && String($('chpiBitProbe')?.value || '').replace(/[^01]/g, '').length) {
+        runKProbeOnly();
+        return;
+      }
+      let samples = state.samples;
+      if ((!samples.length || state.columnsDirty) && state.rawText) {
+        const maxRows = Math.max(1000, Number($('maxRows').value) || 1000000);
+        const maxSamples = Math.max(0, Number($('maxSamples').value) || 0);
+        const result = await parseCsvInWorker({
+          text: state.rawText,
+          timeCol: Number($('timeCol').value),
+          dataCol: Number($('voltCol').value),
+          maxRows,
+          maxSamples,
+          statusPrefix: '解码前解析'
+        });
+        applyWorkerResult(result);
+        samples = state.samples;
+      }
+      if (samples.length < 2) throw new Error('有效样点不足，请检查列选择');
+      const th = getThreshold(samples);
+      const edges = findEdges(samples, th);
+      const autoRate = estimateUiRobust(edges);
+      let ui = $('rateMode').value === 'manual' ? manualUi() : autoRate.ui;
+      if (!Number.isFinite(ui) || ui <= 0) ui = manualUi();
+      const kSync = refineClockByKCodes(samples, th, edges, ui);
+      let decoded;
+      if (kSync) {
+        ui = kSync.ui;
+        $('samplePhase').value = nice(kSync.phase, 4);
+        writeManualRateFromUi(ui);
+        decoded = decodeBits(samples, th, ui, edges, { phase: kSync.phase, startBase: kSync.startBase });
+      } else {
+        decoded = decodeBits(samples, th, ui, edges);
+      }
+      const words = wordsFromBits(decoded.bits);
+      const checks = checkRules(samples, edges, ui, decoded.bits, words, th);
+      if ($('rateMode').value !== 'manual') {
+        checks.checks.push({
+          name: '自动识别 data rate',
+          ok: Number.isFinite(autoRate.ui),
+          level: autoRate.confidence > 0.75 ? 'pass' : 'warn',
+          detail: autoRate.detail
+        });
+      }
+      if ($('chpiKClockAssist')?.checked) {
+        checks.checks.push({
+          name: 'K-code 辅助同步',
+          ok: !!kSync,
+          level: kSync ? 'pass' : 'warn',
+          detail: kSync
+            ? `使用 UI=${fmtTime(kSync.ui)} (${fmtRate(1 / kSync.ui)}), phase=${nice(kSync.phase, 4)} UI, exact=${kSync.exact}, fuzzy=${kSync.fuzzy}, kinds=${kSync.kinds}, mismatchSum=${kSync.mismatchSum}, scanBits=${kSync.decoded.bits.length}`
+            : '未在当前 data rate 附近找到更好的 K-code 同步点；可增大 K辅助扫速率 ±% 或检查阈值/反相'
+        });
+      }
+      const annotations = detectChpiAnnotations(decoded.bits, decoded.times, ui);
+      const ctrlBlocks = extractCtrlBlocks(decoded.bits);
+      const diag = annotations.diagnostics || [];
+      for (const blk of ctrlBlocks) {
+        if (blk.kind === 'CTRL_L') {
+          const byte1 = blk.packets[1];
+          checks.checks.push({
+            name: 'CTRL_L LD_R decode',
+            ok: !!byte1?.ok,
+            level: byte1?.ok ? 'pass' : 'warn',
+            detail: byte1?.ok
+              ? `LD_R byte=0x${byte1.byte.toString(16).toUpperCase().padStart(2, '0')} raw10=${byte1.raw10} order=${byte1.order}`
+              : `Byte1 8B/10B decode fail; raw10=${byte1?.raw10 || '-'}; ${byte1?.tried || ''}`
+          });
+        }
+      }
+      if ($('chpiEnable')?.checked) {
+        checks.checks.push({
+          name: 'CHPI 波形标注',
+          ok: annotations.length > 0,
+          level: annotations.length > 0 ? 'pass' : 'warn',
+          detail: annotations.length > 0
+            ? `已标注 ${annotations.length} 个区间：${annotations.slice(0, 12).map(a => a.label + '@bit' + a.bitStart).join(', ')}`
+            : `未标注；${diag.length ? diag.join('; ') : '未找到 K-code pattern'}。需要填写 K1'/G1' 等 10b 真值或 K1~K4 40bit pattern`
+        });
+        const fail = checks.checks.filter(c => c.level === 'fail').length;
+        const warn = checks.checks.filter(c => c.level === 'warn').length;
+        checks.summary = fail ? 'FAIL' : warn ? 'WARN' : 'PASS';
+      }
+      state.result = { samples, threshold: th, edges, ui, bits: decoded.bits, times: decoded.times, words, checks, annotations, ctrlBlocks };
+      updateMetrics();
+      drawPlot();
+      renderTab();
+      setStatus(checks.summary, checks.summary === 'PASS' ? 'pass' : checks.summary === 'WARN' ? 'warn' : 'fail');
+    }
+
+    function updateMetrics() {
+      const r = state.result;
+      if (!r) return;
+      const dur = r.samples.at(-1).t - r.samples[0].t;
+      $('mSamples').textContent = r.samples.length.toLocaleString();
+      $('mDuration').textContent = fmtTime(dur);
+      $('mThreshold').textContent = nice(r.threshold, 5) + ' V';
+      $('mUI').textContent = fmtTime(r.ui);
+      $('mBits').textContent = r.bits.length.toLocaleString();
+      $('mCheck').innerHTML = `<span class="${r.checks.summary === 'PASS' ? 'pass' : r.checks.summary === 'WARN' ? 'warn' : 'fail'}">${r.checks.summary}</span>`;
+    }
+
+    function currentPlotRange(samples) {
+      if (!samples.length) return { t0: 0, t1: 1 };
+      if (state.plotRangeOverride) return state.plotRangeOverride;
+      let t0 = samples[0].t;
+      let t1 = samples.at(-1).t;
+      const r = state.result;
+      const mode = $('plotXMode')?.value || 'all';
+      if (r?.times?.length && mode === 'decoded') {
+        t0 = r.times[0] - 0.5 * r.ui;
+        t1 = r.times.at(-1) + 0.5 * r.ui;
+      } else if (r?.times?.length && mode === 'window') {
+        const start = Math.max(0, Number($('plotStartBit')?.value) || 0);
+        const count = Math.max(10, Number($('plotBitCount')?.value) || 400);
+        const end = Math.min(r.times.length - 1, start + count - 1);
+        t0 = r.times[Math.min(start, r.times.length - 1)] - 0.5 * r.ui;
+        t1 = r.times[end] + 0.5 * r.ui;
+      }
+      if (!Number.isFinite(t0) || !Number.isFinite(t1) || t1 <= t0) {
+        t0 = samples[0].t;
+        t1 = samples.at(-1).t;
+      }
+      return { t0, t1 };
+    }
+
+    function clampPlotRange(t0, t1) {
+      const samples = state.samples;
+      if (!samples.length || !Number.isFinite(t0) || !Number.isFinite(t1)) return null;
+      const minT = samples[0].t;
+      const maxT = samples.at(-1).t;
+      const full = maxT - minT || 1;
+      let span = Math.max(Math.abs(t1 - t0), full * 1e-6);
+      span = Math.min(span, full);
+      let a = Math.min(t0, t1);
+      let b = a + span;
+      if (a < minT) { a = minT; b = a + span; }
+      if (b > maxT) { b = maxT; a = b - span; }
+      return { t0: a, t1: b };
+    }
+
+    function setPlotOverride(t0, t1) {
+      state.plotRangeOverride = clampPlotRange(t0, t1);
+      drawPlot();
+    }
+
+    function clearPlotOverride() {
+      state.plotRangeOverride = null;
+      drawPlot();
+    }
+
+    function focusDecodedBit(bitIndex, label = '') {
+      const r = state.result;
+      if (!r?.times?.length || !Number.isFinite(r.ui) || bitIndex < 0 || bitIndex >= r.times.length) {
+        setStatus('无法定位：bit 不在当前解码范围内', 'warn');
+        return;
+      }
+      const t = r.times[bitIndex];
+      const span = Math.max(r.ui * 80, (r.samples.at(-1).t - r.samples[0].t) * 0.002);
+      state.selectedBit = { bitIndex, label, t };
+      setPlotOverride(t - span / 2, t + span / 2);
+      setStatus(`已定位 ${label || 'bit'} @ bit ${bitIndex}, ${fmtTime(t)}`, 'pass');
+    }
+
+    function canvasXToTime(canvas, clientX) {
+      const rect = canvas.getBoundingClientRect();
+      const x = (clientX - rect.left) / rect.width * canvas.width;
+      const range = currentPlotRange(state.samples);
+      const plotLeft = 64;
+      const plotRight = canvas.width - 24;
+      const frac = Math.max(0, Math.min(1, (x - plotLeft) / (plotRight - plotLeft)));
+      return range.t0 + frac * (range.t1 - range.t0);
+    }
+
+    function visibleSamples(samples, t0, t1) {
+      if (!samples.length) return [];
+      const out = [];
+      for (const s of samples) {
+        if (s.t >= t0 && s.t <= t1) out.push(s);
+      }
+      if (!out.length) return samples.slice(0, 2);
+      const firstIdx = Math.max(0, samples.findIndex(s => s.t >= t0) - 1);
+      const lastIdx = Math.min(samples.length - 1, firstIdx + out.length + 1);
+      if (samples[firstIdx] && samples[firstIdx].t < out[0].t) out.unshift(samples[firstIdx]);
+      if (samples[lastIdx] && samples[lastIdx].t > out.at(-1).t) out.push(samples[lastIdx]);
+      return out;
+    }
+
+    function drawAnnotation(ctx, ann, xmap, plotTop, plotBottom, index) {
+      const x0 = xmap(ann.t0);
+      const x1 = xmap(ann.t1);
+      const plotLeft = 64;
+      const plotRight = ctx.canvas.width - 24;
+      const left = Math.max(plotLeft, Math.min(x0, x1));
+      const right = Math.min(plotRight, Math.max(x0, x1));
+      if (right < plotLeft || left > plotRight || right - left < 1) return;
+      const labelY = plotTop + 6 + (index % 4) * 22;
+      ctx.save();
+      ctx.fillStyle = ann.kind === 'ctrl' ? hexToRgba(ann.color, 0.10) : hexToRgba(ann.color, 0.16);
+      ctx.fillRect(left, plotTop, Math.max(2, right - left), plotBottom - plotTop);
+      ctx.strokeStyle = ann.color;
+      ctx.lineWidth = ann.kind === 'ctrl' ? 1.4 : 1;
+      ctx.strokeRect(left, plotTop, Math.max(2, right - left), plotBottom - plotTop);
+      ctx.font = '12px Arial, Helvetica, sans-serif';
+      const text = `${ann.label} @${ann.bitStart}`;
+      const tw = ctx.measureText(text).width + 10;
+      const tx = Math.max(plotLeft + 2, Math.min(left + 3, ctx.canvas.width - tw - 22));
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = ann.color;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      roundedRectPath(ctx, tx, labelY, tw, 18, 4);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = ann.color;
+      ctx.fillText(text, tx + 5, labelY + 13);
+      ctx.restore();
+    }
+
+    function roundedRectPath(ctx, x, y, w, h, r) {
+      const rr = Math.min(r, w / 2, h / 2);
+      ctx.moveTo(x + rr, y);
+      ctx.lineTo(x + w - rr, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
+      ctx.lineTo(x + w, y + h - rr);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+      ctx.lineTo(x + rr, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - rr);
+      ctx.lineTo(x, y + rr);
+      ctx.quadraticCurveTo(x, y, x + rr, y);
+    }
+
+    function hexToRgba(hex, alpha) {
+      const h = String(hex).replace('#', '');
+      const r = parseInt(h.slice(0, 2), 16);
+      const g = parseInt(h.slice(2, 4), 16);
+      const b = parseInt(h.slice(4, 6), 16);
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    function niceTicks(min, max, count = 6) {
+      if (!Number.isFinite(min) || !Number.isFinite(max) || min === max) return [min || 0];
+      const span = Math.abs(max - min);
+      const rawStep = span / Math.max(1, count);
+      const pow = Math.pow(10, Math.floor(Math.log10(rawStep)));
+      const frac = rawStep / pow;
+      const niceFrac = frac <= 1 ? 1 : frac <= 2 ? 2 : frac <= 5 ? 5 : 10;
+      const step = niceFrac * pow;
+      const start = Math.ceil(Math.min(min, max) / step) * step;
+      const end = Math.floor(Math.max(min, max) / step) * step;
+      const ticks = [];
+      for (let v = start; v <= end + step * 0.5 && ticks.length < 20; v += step) {
+        ticks.push(Math.abs(v) < step * 1e-9 ? 0 : v);
+      }
+      if (!ticks.length) ticks.push(min, max);
+      return ticks;
+    }
+
+    function drawPlotAxes(ctx, dims, t0, t1, ymin, ymax, xmap, ymap) {
+      const { left, right, top, bottom, w, h } = dims;
+      ctx.save();
+      ctx.font = '11px Arial, Helvetica, sans-serif';
+      ctx.textBaseline = 'middle';
+      ctx.strokeStyle = '#e3ebf3';
+      ctx.fillStyle = '#5f6f82';
+      ctx.lineWidth = 1;
+
+      const yTicks = niceTicks(ymin, ymax, 6);
+      for (const v of yTicks) {
+        const y = ymap(v);
+        if (y < top - 1 || y > bottom + 1) continue;
+        ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(right, y); ctx.stroke();
+        ctx.strokeStyle = '#aebdca';
+        ctx.beginPath(); ctx.moveTo(left - 5, y); ctx.lineTo(left, y); ctx.stroke();
+        ctx.strokeStyle = '#e3ebf3';
+        ctx.textAlign = 'right';
+        ctx.fillText(nice(v, 4), left - 8, y);
+      }
+
+      const xTicks = niceTicks(t0, t1, 8);
+      ctx.textBaseline = 'top';
+      for (const t of xTicks) {
+        const x = xmap(t);
+        if (x < left - 1 || x > right + 1) continue;
+        ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke();
+        ctx.strokeStyle = '#aebdca';
+        ctx.beginPath(); ctx.moveTo(x, bottom); ctx.lineTo(x, bottom + 5); ctx.stroke();
+        ctx.strokeStyle = '#e3ebf3';
+        ctx.textAlign = 'center';
+        ctx.fillText(fmtTime(t), x, bottom + 8);
+      }
+
+      ctx.strokeStyle = '#8ea0b2';
+      ctx.beginPath();
+      ctx.moveTo(left, top);
+      ctx.lineTo(left, bottom);
+      ctx.lineTo(right, bottom);
+      ctx.stroke();
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText('V', 12, top + 8);
+      ctx.textAlign = 'right';
+      ctx.fillText('time', Math.min(w - 10, right), h - 8);
+      ctx.restore();
+    }
+
+    function drawPlot() {
+      const canvas = $('plot');
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width, h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = '#fbfdff';
+      ctx.fillRect(0, 0, w, h);
+      const plotLeft = 64;
+      const plotRight = w - 24;
+      const plotTop = 16;
+      const plotBottom = h - 52;
+      const samples = state.samples.length ? state.samples : [];
+      if (!samples.length) {
+        ctx.fillStyle = '#637181';
+        ctx.fillText('No waveform', w / 2 - 35, h / 2);
+        return;
+      }
+      const range = currentPlotRange(samples);
+      const t0 = range.t0, t1 = range.t1;
+      const viewSamples = visibleSamples(samples, t0, t1);
+      const ySource = $('plotAutoY')?.checked ? viewSamples : samples;
+      const vals = ySource.map(s => s.v);
+      const mm = minMax(vals);
+      const v0 = mm.min, v1 = mm.max;
+      const pad = (v1 - v0) * 0.12 || 1;
+      const ymin = v0 - pad, ymax = v1 + pad;
+      const xmap = t => plotLeft + (t - t0) / (t1 - t0 || 1) * (plotRight - plotLeft);
+      const ymap = v => plotTop + (ymax - v) / (ymax - ymin || 1) * (plotBottom - plotTop);
+
+      drawPlotAxes(ctx, { left: plotLeft, right: plotRight, top: plotTop, bottom: plotBottom, w, h }, t0, t1, ymin, ymax, xmap, ymap);
+
+      if (state.result && $('plotAnnotations')?.checked) {
+        const anns = state.result.annotations || [];
+        const visible = anns.filter(a => a.t1 >= t0 && a.t0 <= t1).slice(0, 80);
+        visible.forEach((ann, i) => drawAnnotation(ctx, ann, xmap, plotTop, plotBottom, i));
+        if (!anns.length && state.result.bits?.length) {
+          const diag = anns.diagnostics || [];
+          const text = diag.length ? 'No CHPI annotation: ' + diag.slice(0, 2).join('; ') : 'No CHPI annotation';
+          ctx.save();
+          ctx.fillStyle = 'rgba(180, 35, 24, .08)';
+          ctx.strokeStyle = 'rgba(180, 35, 24, .45)';
+          ctx.fillRect(w - 392, 22, 364, 26);
+          ctx.strokeRect(w - 392, 22, 364, 26);
+          ctx.fillStyle = '#b42318';
+          ctx.font = '12px Arial, Helvetica, sans-serif';
+          ctx.fillText(text.slice(0, 58), w - 382, 39);
+          ctx.restore();
+        }
+      }
+
+      ctx.strokeStyle = '#1769aa';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      const step = Math.max(1, Math.floor(viewSamples.length / 6000));
+      let first = true;
+      for (let i = 0; i < viewSamples.length; i += step) {
+        const x = xmap(viewSamples[i].t), y = ymap(viewSamples[i].v);
+        if (first) { ctx.moveTo(x, y); first = false; } else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      if (state.result) {
+        const thY = ymap(state.result.threshold);
+        ctx.strokeStyle = '#b42318';
+        ctx.setLineDash([6, 5]);
+        ctx.beginPath(); ctx.moveTo(plotLeft, thY); ctx.lineTo(plotRight, thY); ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.strokeStyle = 'rgba(15, 138, 95, .35)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < state.result.times.length; i += Math.max(1, Math.floor(state.result.times.length / 260))) {
+          const x = xmap(state.result.times[i]);
+          if (x < plotLeft || x > plotRight) continue;
+          ctx.beginPath(); ctx.moveTo(x, plotTop); ctx.lineTo(x, plotBottom); ctx.stroke();
+        }
+      }
+      if (state.result?.times?.length && state.selectedBit) {
+        const sel = state.selectedBit;
+        const t = state.result.times[sel.bitIndex];
+        if (Number.isFinite(t)) {
+          const x = xmap(t);
+          const x0 = xmap(t - state.result.ui / 2);
+          const x1 = xmap(t + state.result.ui / 2);
+          if (x1 >= plotLeft && x0 <= plotRight) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(255, 193, 7, .22)';
+            ctx.fillRect(Math.max(plotLeft, x0), plotTop, Math.max(2, Math.min(plotRight, x1) - Math.max(plotLeft, x0)), plotBottom - plotTop);
+            ctx.strokeStyle = '#d99a00';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(x, plotTop); ctx.lineTo(x, plotBottom); ctx.stroke();
+            ctx.fillStyle = '#7a5200';
+            ctx.font = '12px Arial, Helvetica, sans-serif';
+            ctx.fillText(`${sel.label || 'selected'} bit ${sel.bitIndex}`, Math.max(plotLeft + 4, Math.min(x + 6, w - 180)), 62);
+            ctx.restore();
+          }
+        }
+      }
+      ctx.fillStyle = '#637181';
+      const annCount = state.result?.annotations?.length || 0;
+      const modeText = state.plotRangeOverride ? '    mouse scale' : '';
+      ctx.fillText(`t: ${fmtTime(t0)} to ${fmtTime(t1)}    v: ${nice(v0,4)} to ${nice(v1,4)} V${annCount ? '    annotations: ' + annCount : ''}${modeText}    wheel zoom / drag pan / dblclick reset`, 44, h - 11);
+    }
+
+    function ctrlTrendSpecFromField(field) {
+      const byte = Number(field.byte);
+      const bit = Number(field.bit ?? field.fieldBit);
+      const name = String(field.name || '');
+      const reg = String(field.reg || `CTRL_L.Byte${byte}[${bit}]`);
+      if (/^LD_R\[\d+\]$/.test(name) || byte === 1) {
+        return { kind: 'CTRL_L', mode: 'byte', key: 'byte:1', byte: 1, bit: null, title: 'LD_R[7:0]', reg: 'CTRL_L.Byte1[7:0]' };
+      }
+      if (/^LD_W\[\d+\]$/.test(name) || byte === 2) {
+        return { kind: 'CTRL_L', mode: 'byte', key: 'byte:2', byte: 2, bit: null, title: 'LD_W[7:0]', reg: 'CTRL_L.Byte2[7:0]' };
+      }
+      if (/^LOAD\[\d+\]$/.test(name) || (byte === 3 && (bit === 4 || bit === 5))) {
+        return { kind: 'CTRL_L', mode: 'field2', key: 'load', byte: 3, bit: 4, title: 'LOAD[1:0]', reg: 'CTRL_L.Byte3[5:4]' };
+      }
+      return { kind: 'CTRL_L', mode: 'bit', key: `bit:${byte}.${bit}`, byte, bit, title: name || reg, reg };
+    }
+
+    function ctrlTrendValueForBlock(block, spec) {
+      const byteVal = block.bytes?.[spec.byte];
+      const packet = block.packets?.[spec.byte];
+      const base = {
+        bitStart: spec.mode === 'bit' ? (packet?.bitStart ?? block.bitStart) + spec.bit : packet?.bitStart ?? block.bitStart,
+        byteText: Number.isInteger(byteVal) ? '0x' + byteVal.toString(16).toUpperCase().padStart(2, '0') : 'decode fail'
+      };
+      if (!Number.isInteger(byteVal)) return { ...base, value: null, shortText: '-', longText: '-', changedKey: 'null' };
+      if (spec.mode === 'byte') {
+        const hex = '0x' + byteVal.toString(16).toUpperCase().padStart(2, '0');
+        return { ...base, value: byteVal, shortText: hex, longText: `${hex} / ${byteVal.toString(2).padStart(8, '0')}b / ${byteVal}`, changedKey: String(byteVal) };
+      }
+      if (spec.mode === 'field2') {
+        const v = (byteVal >> spec.bit) & 0x3;
+        return { ...base, value: v, shortText: String(v), longText: `${v} / ${v.toString(2).padStart(2, '0')}b`, changedKey: String(v) };
+      }
+      const v = (byteVal >> spec.bit) & 1;
+      return { ...base, value: v, shortText: String(v), longText: String(v), changedKey: String(v) };
+    }
+
+    function isCtrlTrendSelected(field) {
+      const spec = state.selectedCtrlTrend;
+      if (!spec) return false;
+      return ctrlTrendSpecFromField(field).key === spec.key;
+    }
+
+    function selectCtrlTrendFromDataset(ds) {
+      state.selectedCtrlTrend = ctrlTrendSpecFromField({
+        byte: ds.byte,
+        bit: ds.fieldBit,
+        name: ds.name,
+        reg: ds.reg
+      });
+    }
+
+    function renderCtrlTrend(blocks) {
+      const spec = state.selectedCtrlTrend;
+      if (!spec || spec.kind !== 'CTRL_L') return '';
+      const ctrlLs = blocks.filter(b => b.kind === 'CTRL_L').sort((a, b) => a.bitStart - b.bitStart);
+      if (!ctrlLs.length) return '';
+      let prevKey = null;
+      let changes = 0;
+      const rows = ctrlLs.map((blk, i) => {
+        const v = ctrlTrendValueForBlock(blk, spec);
+        const changed = i > 0 && v.changedKey !== prevKey;
+        if (changed) changes++;
+        prevKey = v.changedKey;
+        const t = state.result?.times?.[v.bitStart];
+        return { index: i, blk, ...v, changed, time: Number.isFinite(t) ? fmtTime(t) : '-' };
+      });
+      const chips = rows.slice(0, 80).map(r => `<span class="ctrlTrendChip ctrlTrendJump${r.changed ? ' changed' : ''}" data-bit="${r.bitStart}" data-label="${esc(spec.title + ' #' + r.index)}">#${r.index}: ${esc(r.shortText)}${r.changed ? ' *' : ''}</span>`).join('');
+      const more = rows.length > 80 ? `<span class="ctrlTrendChip">... ${rows.length - 80} more</span>` : '';
+      return `
+        <div class="ctrlTrend">
+          <h2>CTRL_L ${esc(spec.title)} value trend</h2>
+          <div class="ctrlTrendMeta">
+            <span class="pill">${esc(spec.reg)}</span>
+            <span class="pill">${rows.length} captures</span>
+            <span class="pill">${changes} changes</span>
+            <span class="pill">点击下面任一行可定位波形</span>
+          </div>
+          <div class="ctrlTrendChipRow">${chips}${more}</div>
+          <table><thead><tr><th>#</th><th>CTRL_L bit</th><th>Time</th><th>Value</th><th>Decoded byte</th><th>Change</th></tr></thead><tbody>
+            ${rows.map(r => `<tr class="ctrlTrendJump" data-bit="${r.bitStart}" data-label="${esc(spec.title + ' #' + r.index)}"><td>${r.index}</td><td>${r.blk.bitStart}</td><td>${r.time}</td><td>${esc(r.longText)}</td><td>${esc(r.byteText)}</td><td>${r.changed ? '<span class="warn">changed</span>' : ''}</td></tr>`).join('')}
+          </tbody></table>
+        </div>
+      `;
+    }
+
+    function renderTab() {
+      const r = state.result;
+      const body = $('tabBody');
+      if (!r) { body.innerHTML = '<div class="empty">导入 CSV 后点击“解码”。</div>'; return; }
+      if (state.activeTab === 'checks') {
+        body.innerHTML = `<table><thead><tr><th>项目</th><th>结果</th><th>说明</th></tr></thead><tbody>${
+          r.checks.checks.map(c => `<tr><td>${esc(c.name)}</td><td class="${c.level}">${c.level.toUpperCase()}</td><td>${esc(c.detail)}</td></tr>`).join('')
+        }</tbody></table>`;
+      } else if (state.activeTab === 'ctrl') {
+        const blocks = r.ctrlBlocks || [];
+        if (!blocks.length) {
+          body.innerHTML = '<div class="empty">未检测到 CTRL_L/CTRL_F。需要先检测到 K1/K4。</div>';
+        } else {
+          body.innerHTML = renderCtrlTrend(blocks) + blocks.map((blk, idx) => `
+            <h2>${esc(blk.kind)} #${idx} payload @ bit ${blk.bitStart} (K-code ${blk.kBitStart}~${blk.bitStart - 1}, K not 8B/10B${blk.kMismatch ? ', fuzzy mm=' + blk.kMismatch + '/40' : ''})</h2>
+            <table><thead><tr><th>Packet</th><th>Bit start</th><th>Raw 10b</th><th>Table-order 10b</th><th>8b decoded</th><th>Order</th></tr></thead><tbody>
+              ${blk.packets.map(p => `<tr class="ctrlLocate" data-bit="${p.bitStart}" data-label="${esc(blk.kind + ' packet' + p.index)}"><td>${p.index}</td><td>${p.bitStart}</td><td class="bits">${p.raw10}</td><td class="bits">${p.ok ? p.bits : reverseBits(p.raw10)}</td><td>${p.ok ? '0x' + p.byte.toString(16).toUpperCase().padStart(2, '0') : 'decode fail'}</td><td>${esc(p.ok ? p.order + (p.ambiguous ? ' ambiguous' : '') : p.tried || '-')}</td></tr>`).join('')}
+            </tbody></table>
+            <table style="margin-top:10px"><thead><tr><th>Byte</th><th>Bit</th><th>Reg</th><th>Name</th><th>Value</th><th>Byte decode</th></tr></thead><tbody>
+              ${blk.fields.map(f => {
+                const p = blk.packets[f.byte];
+                const btxt = p?.ok ? '0x' + p.byte.toString(16).toUpperCase().padStart(2, '0') : `fail raw=${p?.raw10 || '-'}`;
+                const label = `${blk.kind} ${f.reg} ${f.name}`;
+                const selected = blk.kind === 'CTRL_L' && isCtrlTrendSelected(f) ? ' ctrlTrendSelected' : '';
+                return `<tr class="ctrlLocate${selected}" data-bit="${f.bitStart}" data-label="${esc(label)}" data-kind="${esc(blk.kind)}" data-reg="${esc(f.reg)}" data-name="${esc(f.name)}" data-byte="${f.byte}" data-field-bit="${f.bit}"><td>${f.byte}</td><td>${f.bit}</td><td>${esc(f.reg)}</td><td>${esc(f.name)}</td><td>${f.value == null ? '-' : f.value}</td><td>${esc(btxt)}</td></tr>`;
+              }).join('')}
+            </tbody></table>
+          `).join('');
+        }
+      } else if (state.activeTab === 'words') {
+        body.innerHTML = `<table><thead><tr><th>#</th><th>Bit start</th><th>Bits</th><th>Hex</th><th>Dec</th></tr></thead><tbody>${
+          r.words.map(w => `<tr><td>${w.index}</td><td>${w.bitStart}</td><td class="bits">${w.bits}</td><td>${w.hex}</td><td>${w.value}</td></tr>`).join('')
+        }</tbody></table>`;
+      } else if (state.activeTab === 'bits') {
+        const grouped = r.bits.join('').replace(/(.{8})/g, '$1 ');
+        body.innerHTML = `<div class="bits">${grouped || '无 bit'}</div>`;
+      } else {
+        body.innerHTML = `<table><thead><tr><th>#</th><th>Time</th><th>Edge</th></tr></thead><tbody>${
+          r.edges.slice(0, 1000).map((e, i) => `<tr><td>${i}</td><td>${fmtTime(e.t)}</td><td>${e.from} -> ${e.to}</td></tr>`).join('')
+        }</tbody></table>`;
+      }
+    }
+
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function nice(v, digits = 4) {
+      if (!Number.isFinite(v)) return '-';
+      return Number(v).toPrecision(digits).replace(/\.?0+($|e)/, '$1');
+    }
+
+    function fmtTime(s) {
+      if (!Number.isFinite(s)) return '-';
+      const a = Math.abs(s);
+      if (a >= 1) return nice(s, 4) + ' s';
+      if (a >= 1e-3) return nice(s * 1e3, 4) + ' ms';
+      if (a >= 1e-6) return nice(s * 1e6, 4) + ' us';
+      if (a >= 1e-9) return nice(s * 1e9, 4) + ' ns';
+      if (a >= 1e-12) return nice(s * 1e12, 4) + ' ps';
+      return nice(s, 4) + ' s';
+    }
+
+    function fmtRate(hz) {
+      if (!Number.isFinite(hz)) return '-';
+      if (hz >= 1e9) return nice(hz / 1e9, 4) + ' Gbps';
+      if (hz >= 1e6) return nice(hz / 1e6, 4) + ' Mbps';
+      if (hz >= 1e3) return nice(hz / 1e3, 4) + ' kbps';
+      return nice(hz, 4) + ' bps';
+    }
+
+    function exportReport() {
+      if (!state.result) return;
+      const report = {
+        generatedAt: new Date().toISOString(),
+        columns: { time: $('timeCol').selectedOptions[0]?.textContent, voltage: $('voltCol').selectedOptions[0]?.textContent },
+        settings: {
+          threshold: state.result.threshold,
+          ui: state.result.ui,
+          wordBits: Number($('wordBits').value),
+          bitOrder: 'lsb-fixed'
+        },
+        checks: state.result.checks.checks,
+        words: state.result.words,
+        annotations: state.result.annotations || [],
+        ctrlBlocks: state.result.ctrlBlocks || [],
+        bitCount: state.result.bits.length
+      };
+      const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'waveform_protocol_report.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    $('file').addEventListener('change', async (e) => {
+      const f = e.target.files[0];
+      if (!f) return;
+      try {
+        const seq = ++state.buildSeq;
+        const maxRows = Math.max(1000, Number($('maxRows').value) || 1000000);
+        const maxSamples = Math.max(0, Number($('maxSamples').value) || 0);
+        setStatus(`读取中 ${f.name}`);
+        state.rawText = await readCsvPreview(f, maxRows);
+        if (seq !== state.buildSeq) return;
+        const result = await parseCsvInWorker({
+          text: state.rawText,
+          maxRows,
+          maxSamples,
+          statusPrefix: '解析预览'
+        });
+        applyWorkerResult(result);
+        const mb = (f.size / 1024 / 1024).toFixed(1);
+        setStatus(`已载入 ${mb} MB，处理 ${result.rowLimit.toLocaleString()} 行，${result.decimStep > 1 ? '抽样步长 ' + result.decimStep : '未抽样'}`, 'pass');
+      } catch (err) {
+        setStatus('CSV 解析失败', 'fail');
+        alert(err.message);
+      }
+    });
+
+    $('reload').addEventListener('click', async () => {
+      try {
+        if (!state.rawText) throw new Error('请先载入 CSV');
+        const maxRows = Math.max(1000, Number($('maxRows').value) || 1000000);
+        const maxSamples = Math.max(0, Number($('maxSamples').value) || 0);
+        const result = await parseCsvInWorker({
+          text: state.rawText,
+          timeCol: Number($('timeCol').value),
+          dataCol: Number($('voltCol').value),
+          maxRows,
+          maxSamples,
+          statusPrefix: '重新解析'
+        });
+        applyWorkerResult(result);
+        setStatus('已重新解析', 'pass');
+      } catch (err) { alert(err.message); }
+    });
+    $('decode').addEventListener('click', () => {
+      decode().catch((err) => { setStatus('解码失败', 'fail'); alert(err.message); });
+    });
+    $('autoRate').addEventListener('click', async () => {
+      try {
+        let samples = state.samples;
+        if ((!samples.length || state.columnsDirty) && state.rawText) {
+          const maxRows = Math.max(1000, Number($('maxRows').value) || 1000000);
+          const maxSamples = Math.max(0, Number($('maxSamples').value) || 0);
+          const result = await parseCsvInWorker({
+            text: state.rawText,
+            timeCol: Number($('timeCol').value),
+            dataCol: Number($('voltCol').value),
+            maxRows,
+            maxSamples,
+            statusPrefix: '识别速率前解析'
+          });
+          applyWorkerResult(result);
+          samples = state.samples;
+        }
+        if (samples.length < 2) throw new Error('请先载入 CSV 波形');
+        const th = getThreshold(samples);
+        const edges = findEdges(samples, th);
+        const est = estimateUiRobust(edges);
+        if (!Number.isFinite(est.ui) || est.ui <= 0) throw new Error(est.detail || '无法识别 data rate');
+        writeManualRateFromUi(est.ui);
+        setStatus(`已识别速率：${est.detail}`, est.confidence > 0.75 ? 'pass' : 'warn');
+      } catch (err) {
+        setStatus('识别速率失败', 'fail');
+        alert(err.message);
+      }
+    });
+    $('plotFit').addEventListener('click', () => {
+      const r = state.result;
+      if (r?.annotations?.length) {
+        const first = r.annotations[0];
+        $('plotXMode').value = 'window';
+        $('plotStartBit').value = Math.max(0, first.bitStart - 30);
+        $('plotBitCount').value = Math.max(200, Math.min(1200, first.bitLen + 180));
+      } else if (r?.times?.length) {
+        $('plotXMode').value = 'decoded';
+      } else {
+        $('plotXMode').value = 'all';
+      }
+      $('plotAutoY').checked = true;
+      state.plotRangeOverride = null;
+      drawPlot();
+    });
+    $('exportReport').addEventListener('click', exportReport);
+    $('tabBody').addEventListener('click', (e) => {
+      const jump = e.target.closest?.('.ctrlTrendJump');
+      if (jump) {
+        const bit = Number(jump.dataset.bit);
+        const label = jump.dataset.label || '';
+        if (Number.isFinite(bit)) focusDecodedBit(bit, label);
+        return;
+      }
+      const row = e.target.closest?.('.ctrlLocate');
+      if (!row) return;
+      const bit = Number(row.dataset.bit);
+      const label = row.dataset.label || '';
+      if (row.dataset.kind === 'CTRL_L' && row.dataset.reg) {
+        selectCtrlTrendFromDataset(row.dataset);
+        renderTab();
+      }
+      if (Number.isFinite(bit)) focusDecodedBit(bit, label);
+    });
+    for (const b of document.querySelectorAll('.tab')) {
+      b.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+        b.classList.add('active');
+        state.activeTab = b.dataset.tab;
+        renderTab();
+      });
+    }
+    $('thresholdMode').addEventListener('change', () => $('threshold').disabled = $('thresholdMode').value === 'auto');
+    $('rateMode').addEventListener('change', () => $('dataRate').disabled = $('rateMode').value === 'auto');
+    $('timeCol').addEventListener('change', markColumnsChanged);
+    $('voltCol').addEventListener('change', markColumnsChanged);
+    for (const id of ['plotXMode', 'plotStartBit', 'plotBitCount', 'plotAutoY', 'plotAnnotations']) {
+      $(id).addEventListener('input', () => {
+        if (id === 'plotXMode' || id === 'plotStartBit' || id === 'plotBitCount') state.plotRangeOverride = null;
+        drawPlot();
+      });
+      $(id).addEventListener('change', () => {
+        if (id === 'plotXMode' || id === 'plotStartBit' || id === 'plotBitCount') state.plotRangeOverride = null;
+        drawPlot();
+      });
+    }
+    const plotCanvas = $('plot');
+    plotCanvas.addEventListener('wheel', (e) => {
+      if (!state.samples.length) return;
+      e.preventDefault();
+      const range = currentPlotRange(state.samples);
+      const anchor = canvasXToTime(plotCanvas, e.clientX);
+      const zoom = Math.exp(Math.sign(e.deltaY) * 0.22);
+      const newSpan = (range.t1 - range.t0) * zoom;
+      const frac = (anchor - range.t0) / (range.t1 - range.t0 || 1);
+      setPlotOverride(anchor - newSpan * frac, anchor + newSpan * (1 - frac));
+    }, { passive: false });
+    plotCanvas.addEventListener('pointerdown', (e) => {
+      if (!state.samples.length) return;
+      plotCanvas.setPointerCapture(e.pointerId);
+      plotCanvas.classList.add('dragging');
+      const range = currentPlotRange(state.samples);
+      state.plotDrag = { pointerId: e.pointerId, x: e.clientX, t0: range.t0, t1: range.t1 };
+    });
+    plotCanvas.addEventListener('pointermove', (e) => {
+      const drag = state.plotDrag;
+      if (!drag || drag.pointerId !== e.pointerId) return;
+      const rect = plotCanvas.getBoundingClientRect();
+      const dt = -(e.clientX - drag.x) / rect.width * (drag.t1 - drag.t0);
+      setPlotOverride(drag.t0 + dt, drag.t1 + dt);
+    });
+    function endPlotDrag(e) {
+      if (state.plotDrag && (!e || state.plotDrag.pointerId === e.pointerId)) {
+        state.plotDrag = null;
+        plotCanvas.classList.remove('dragging');
+      }
+    }
+    plotCanvas.addEventListener('pointerup', endPlotDrag);
+    plotCanvas.addEventListener('pointercancel', endPlotDrag);
+    plotCanvas.addEventListener('dblclick', clearPlotOverride);
+    $('threshold').disabled = true;
+    $('dataRate').disabled = true;
+    drawPlot();
+  </script>
+</body>
+</html>
